@@ -15,9 +15,9 @@ import (
 import "C"
 
 // #cgo pkg-config: libxml-2.0
-// #include "libxml/parser.h"
-// #include "libxml/parserInternals.h"
-// #include "libxml/xmlmemory.h"
+// #include <libxml/parser.h>
+// #include <libxml/parserInternals.h>
+// #include <libxml/xmlmemory.h>
 // // Macro wrapper function
 // static inline void MY_xmlFree(void *p) {
 //   xmlFree(p);
