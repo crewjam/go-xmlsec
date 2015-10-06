@@ -18,6 +18,10 @@ import "C"
 // #include "libxml/parser.h"
 // #include "libxml/parserInternals.h"
 // #include "libxml/xmlmemory.h"
+// // Macro wrapper function
+// static inline void MY_xmlFree(void *p) {
+//   xmlFree(p);
+// }
 import "C"
 
 func init() {
@@ -81,7 +85,7 @@ func dumpDoc(doc *C.xmlDoc) string {
 	var bufferSize C.int
 	C.xmlDocDumpMemory(doc, &buffer, &bufferSize)
 	rv := C.GoStringN((*C.char)(unsafe.Pointer(buffer)), bufferSize)
-	C.xmlMemFree(unsafe.Pointer(buffer))
+	C.MY_xmlFree(unsafe.Pointer(buffer))
 	return rv
 }
 
@@ -120,6 +124,7 @@ func Sign(key []byte, docStr string) (string, error) {
 	return dumpDoc(doc), nil
 }
 
+// ErrVerificationFailed is returned from Verify when the signature is incorrect
 var ErrVerificationFailed = errors.New("signature verification failed")
 
 const (
