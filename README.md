@@ -1,5 +1,9 @@
 # go-xmlsec
 
+[![Build Status](https://travis-ci.org/crewjam/go-xmlsec.svg?branch=master)](https://travis-ci.org/crewjam/go-xmlsec)
+
+[![](https://godoc.org/github.com/crewjam/go-xmlsec?status.png)](http://godoc.org/github.com/crewjam/go-xmlsec)
+
 A (partial) wrapper for [xmlsec](https://www.aleksey.com/xmlsec).
 
 ## Signing Example
