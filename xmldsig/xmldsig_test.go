@@ -23,7 +23,7 @@ Un0PLcemAzPi8ADJlbMDG/IDXNbSej0Y4tw9Cdho1Q38XLZJi0RNdNvQJD1fWu3x
 9+QU/vJr7lMLzdoy
 -----END PRIVATE KEY-----`)
 
-	docStr := `<?xml version="1.0" encoding="UTF-8"?>
+	docStr := []byte(`<?xml version="1.0" encoding="UTF-8"?>
 <!--
 XML Security Library example: Simple signature template file for sign1 example.
 -->
@@ -58,18 +58,20 @@ XML Security Library example: Simple signature template file for sign1 example.
 		return
 	}
 
-	if actualSignedString != expectedSignedString {
-		t.Errorf("signed: expected %q, got `%q`", expectedSignedString, actualSignedString)
+	if string(actualSignedString) != expectedSignedString {
+		t.Errorf("signed: expected %q, got `%q`", expectedSignedString, string(actualSignedString))
+		return
+	}
 		return
 	}
 
-	if err := Verify(key, expectedSignedString); err != nil {
+	if err := Verify(key, []byte(expectedSignedString)); err != nil {
 		t.Errorf("verify: %s", err)
 		return
 	}
 
 	brokenDoc := strings.Replace(expectedSignedString, "Hello", "Goodbye", 1)
-	err = Verify(key, brokenDoc)
+	err = Verify(key, []byte(brokenDoc))
 	if err != ErrVerificationFailed {
 		t.Errorf("verify: expected verification failed, got %s", err)
 		return

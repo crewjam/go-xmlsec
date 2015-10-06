@@ -59,8 +59,9 @@ func closeContext(ctx *C.xmlSecDSigCtx) {
 	C.xmlSecDSigCtxDestroy(ctx)
 }
 
-func newDoc(s string) (*C.xmlDoc, error) {
-	ctx := C.xmlCreateMemoryParserCtxt(C.CString(s), C.int(len(s)))
+func newDoc(buf []byte) (*C.xmlDoc, error) {
+	ctx := C.xmlCreateMemoryParserCtxt((*C.char)(unsafe.Pointer(&buf[0])),
+		C.int(len(buf)))
 	if ctx == nil {
 		return nil, errors.New("error creating parser")
 	}
@@ -80,13 +81,16 @@ func newDoc(s string) (*C.xmlDoc, error) {
 	return doc, nil
 }
 
-func dumpDoc(doc *C.xmlDoc) string {
+func dumpDoc(doc *C.xmlDoc) []byte {
 	var buffer *C.xmlChar
 	var bufferSize C.int
 	C.xmlDocDumpMemory(doc, &buffer, &bufferSize)
 	rv := C.GoStringN((*C.char)(unsafe.Pointer(buffer)), bufferSize)
 	C.MY_xmlFree(unsafe.Pointer(buffer))
-	return rv
+
+	// TODO(ross): this is totally nasty un-idiomatic, but I'm
+	// tired of googling how to copy a []byte from a char*
+	return []byte(rv)
 }
 
 func closeDoc(doc *C.xmlDoc) {
@@ -97,31 +101,31 @@ func closeDoc(doc *C.xmlDoc) {
 // the XML-DSIG standard. docStr is a template document meaning
 // that it contains a `Signature` element in the
 // http://www.w3.org/2000/09/xmldsig# namespace.
-func Sign(key []byte, docStr string) (string, error) {
+func Sign(key []byte, doc []byte) ([]byte, error) {
 	ctx, err := newContext(key)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer closeContext(ctx)
 
-	doc, err := newDoc(docStr)
+	parsedDoc, err := newDoc(doc)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	defer closeDoc(doc)
+	defer closeDoc(parsedDoc)
 
-	node := C.xmlSecFindNode(C.xmlDocGetRootElement(doc),
+	node := C.xmlSecFindNode(C.xmlDocGetRootElement(parsedDoc),
 		(*C.xmlChar)(unsafe.Pointer(&C.xmlSecNodeSignature)),
 		(*C.xmlChar)(unsafe.Pointer(&C.xmlSecDSigNs)))
 	if node == nil {
-		return "", errors.New("cannot find start node")
+		return nil, errors.New("cannot find start node")
 	}
 
 	if rv := C.xmlSecDSigCtxSign(ctx, node); rv < 0 {
-		return "", errors.New("failed to sign")
+		return nil, errors.New("failed to sign")
 	}
 
-	return dumpDoc(doc), nil
+	return dumpDoc(parsedDoc), nil
 }
 
 // ErrVerificationFailed is returned from Verify when the signature is incorrect
@@ -137,20 +141,20 @@ const (
 // to the XML-DSIG specification. publicKey is the public part of
 // the key used to sign docStr. If the signature is not correct,
 // this function returns ErrVarificationFailed.
-func Verify(publicKey []byte, docStr string) error {
+func Verify(publicKey []byte, doc []byte) error {
 	ctx, err := newContext(publicKey)
 	if err != nil {
 		return err
 	}
 	defer closeContext(ctx)
 
-	doc, err := newDoc(docStr)
+	parsedDoc, err := newDoc(doc)
 	if err != nil {
 		return err
 	}
-	defer closeDoc(doc)
+	defer closeDoc(parsedDoc)
 
-	node := C.xmlSecFindNode(C.xmlDocGetRootElement(doc),
+	node := C.xmlSecFindNode(C.xmlDocGetRootElement(parsedDoc),
 		(*C.xmlChar)(unsafe.Pointer(&C.xmlSecNodeSignature)),
 		(*C.xmlChar)(unsafe.Pointer(&C.xmlSecDSigNs)))
 	if node == nil {
