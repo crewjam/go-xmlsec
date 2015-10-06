@@ -1,9 +1,15 @@
 package xmldsig
 
 import (
+	"encoding/xml"
 	"strings"
 	"testing"
 )
+
+type Envelope struct {
+	Data      string
+	Signature Signature `xml:"http://www.w3.org/2000/09/xmldsig# Signature"`
+}
 
 func TestSign(t *testing.T) {
 	key := []byte(`-----BEGIN PRIVATE KEY-----
@@ -48,7 +54,7 @@ XML Security Library example: Simple signature template file for sign1 example.
 	<KeyName/>
     </KeyInfo>
   </Signature>
-</Envelope>`
+</Envelope>`)
 
 	expectedSignedString := "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!--\nXML Security Library example: Simple signature template file for sign1 example.\n-->\n<Envelope xmlns=\"urn:envelope\">\n  <Data>\n\tHello, World!\n  </Data>\n  <Signature xmlns=\"http://www.w3.org/2000/09/xmldsig#\">\n    <SignedInfo>\n      <CanonicalizationMethod Algorithm=\"http://www.w3.org/TR/2001/REC-xml-c14n-20010315\"/>\n      <SignatureMethod Algorithm=\"http://www.w3.org/2000/09/xmldsig#rsa-sha1\"/>\n      <Reference URI=\"\">\n        <Transforms>\n          <Transform Algorithm=\"http://www.w3.org/2000/09/xmldsig#enveloped-signature\"/>\n        </Transforms>\n        <DigestMethod Algorithm=\"http://www.w3.org/2000/09/xmldsig#sha1\"/>\n        <DigestValue>9H/rQr2Axe9hYTV2n/tCp+3UIQQ=</DigestValue>\n      </Reference>\n    </SignedInfo>\n    <SignatureValue>2rM7C8ZzCjxEY4kueUaSevvEZjORQ7hBTWGxUJXStyQScLtX1drFx9dRmUdk/uRr\n0O37B3gsbKzlpQNfdVYPIfWgswjEVLBH7Ncl1dJ6dTofkQrogIF5CQE+PIAG3MPh\nnWsIcBahRQ+rNaRB/TDscuEV3+V3Je4K7E0OEKEuP1I=</SignatureValue>\n    <KeyInfo>\n\t<KeyName/>\n    </KeyInfo>\n  </Signature>\n</Envelope>\n"
 
@@ -62,6 +68,22 @@ XML Security Library example: Simple signature template file for sign1 example.
 		t.Errorf("signed: expected %q, got `%q`", expectedSignedString, string(actualSignedString))
 		return
 	}
+
+	// Try again but this time construct the message from a struct having a Signature member
+	doc := Envelope{Data: "Hello, World!"}
+	doc.Signature = DefaultSignature()
+	docStr, err = xml.Marshal(doc)
+	if err != nil {
+		t.Errorf("marshal: %s", err)
+	}
+	actualSignedString, err = Sign(key, docStr)
+	if err != nil {
+		t.Errorf("sign: %s", err)
+		return
+	}
+	expectedSignedString = "<?xml version=\"1.0\"?>\n<Envelope><Data>Hello, World!</Data><Signature xmlns=\"http://www.w3.org/2000/09/xmldsig#\"><SignedInfo><CanonicalizationMethod Algorithm=\"http://www.w3.org/TR/2001/REC-xml-c14n-20010315\"/><SignatureMethod Algorithm=\"http://www.w3.org/2000/09/xmldsig#rsa-sha1\"/><Reference><Transforms><Transform Algorithm=\"http://www.w3.org/2000/09/xmldsig#enveloped-signature\"/></Transforms><DigestMethod Algorithm=\"http://www.w3.org/2000/09/xmldsig#sha1\"/><DigestValue>09XOMG8zghPZhJYD8kM2uJsr1cc=</DigestValue></Reference></SignedInfo><SignatureValue>fqL9oHtcNiFFaTy7AJoQ1hs5Wz0fTqjq0xANLz/mSLBLiFv2OEicuwyo4InyBnyf\njSjmCBaz8QPX9rTW49a2wv1RMkls0WnqP65DUY2ofM4wKHWcjnGt1p1rlYdDv5Sl\njk5Wqwy2EmoqGSXQovRZmn4jidThmoqgum4LNKC2lFI=</SignatureValue><KeyInfo><KeyName/></KeyInfo></Signature></Envelope>\n"
+	if string(actualSignedString) != expectedSignedString {
+		t.Errorf("signed: expected %q, got `%q`", expectedSignedString, string(actualSignedString))
 		return
 	}
 
