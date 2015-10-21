@@ -23,13 +23,18 @@ type Method struct {
 type Signature struct {
 	XMLName xml.Name `xml:"http://www.w3.org/2000/09/xmldsig# Signature"`
 
-	CanonicalizationMethod Method   `xml:"SignedInfo>CanonicalizationMethod"`
-	SignatureMethod        Method   `xml:"SignedInfo>SignatureMethod"`
-	ReferenceTransforms    []Method `xml:"SignedInfo>Reference>Transforms>Transform"`
-	DigestMethod           Method   `xml:"SignedInfo>Reference>DigestMethod"`
-	DigestValue            string   `xml:"SignedInfo>Reference>DigestValue"`
-	SignatureValue         string   `xml:"SignatureValue"`
-	KeyName                string   `xml:"KeyInfo>KeyName"`
+	CanonicalizationMethod Method             `xml:"SignedInfo>CanonicalizationMethod"`
+	SignatureMethod        Method             `xml:"SignedInfo>SignatureMethod"`
+	ReferenceTransforms    []Method           `xml:"SignedInfo>Reference>Transforms>Transform"`
+	DigestMethod           Method             `xml:"SignedInfo>Reference>DigestMethod"`
+	DigestValue            string             `xml:"SignedInfo>Reference>DigestValue"`
+	SignatureValue         string             `xml:"SignatureValue"`
+	KeyName                string             `xml:"KeyInfo>KeyName"`
+	X509Certificate        *SignatureX509Data `xml:"KeyInfo>X509Data,omitempty"`
+}
+
+type SignatureX509Data struct {
+	X509Certificate string `xml:"X509Certificate,omitempty"`
 }
 
 // DefaultSignature populates a default Signature that uses c14n and SHA1.
