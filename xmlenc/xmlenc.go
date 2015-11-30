@@ -146,6 +146,17 @@ func decryptEncryptedData(key []byte, d *encryptedData) ([]byte, error) {
 	mode := cipher.NewCBCDecrypter(blockCipher, iv)
 	mode.CryptBlocks(ciphertext, ciphertext)
 
+	// I've noticed a trailing 0x01 byte in the plaintext
+	// which I cannot explain and which breaks things downstream.
+	// Lacking a better option, we'll strip it here. There are
+	// probably loads of better ways to handle this, not least of
+	// which is to figure out where that strange byte is coming
+	// from.
+	// TODO(ross): figure out where this comes from
+	if ciphertext[len(ciphertext)-1] == 0x1 {
+		ciphertext = ciphertext[:len(ciphertext)-1]
+	}
+
 	return ciphertext, nil
 }
 
