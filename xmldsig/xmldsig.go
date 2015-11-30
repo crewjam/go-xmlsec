@@ -39,7 +39,26 @@ func init() {
 	}
 }
 
-func newDoc(buf []byte) (*C.xmlDoc, error) {
+// Options represents additional, less commonly used, options for Sign and
+// Verify
+type Options struct {
+	// Specify the name of ID attributes for specific elements. This
+	// may be required if the signed document contains Reference elements
+	// that define which parts of the document are to be signed.
+	//
+	// https://www.aleksey.com/xmlsec/faq.html#section_3_2
+	// http://www.w3.org/TR/xml-id/
+	// http://xmlsoft.org/html/libxml-valid.html#xmlAddID
+	XMLID []XMLIDOption
+}
+
+type XMLIDOption struct {
+	ElementName      string
+	ElementNamespace string
+	AttributeName    string
+}
+
+func newDoc(buf []byte, opts Options) (*C.xmlDoc, error) {
 	ctx := C.xmlCreateMemoryParserCtxt((*C.char)(unsafe.Pointer(&buf[0])),
 		C.int(len(buf)))
 	if ctx == nil {
@@ -58,7 +77,48 @@ func newDoc(buf []byte) (*C.xmlDoc, error) {
 	if doc == nil {
 		return nil, errors.New("parse failed")
 	}
+
+	for _, idattr := range opts.XMLID {
+		if err := addIDAttr(C.xmlDocGetRootElement(doc),
+			idattr.AttributeName, idattr.ElementName, idattr.ElementNamespace); err != nil {
+			return nil, err
+		}
+	}
 	return doc, nil
+}
+
+func addIDAttr(node *C.xmlNode, attrName, nodeName, nsHref string) error {
+	// process children first because it does not matter much but does simplify code
+	cur := C.xmlSecGetNextElementNode(node.children)
+	for {
+		if cur == nil {
+			break
+		}
+		if err := addIDAttr(cur, attrName, nodeName, nsHref); err != nil {
+			return err
+		}
+		cur = C.xmlSecGetNextElementNode(cur.next)
+	}
+
+	if C.GoString((*C.char)(unsafe.Pointer(node.name))) != nodeName {
+		return nil
+	}
+	if nsHref != "" && node.ns != nil && C.GoString((*C.char)(unsafe.Pointer(node.ns.href))) != nsHref {
+		return nil
+	}
+
+	// the attribute with name equal to attrName should exist
+	for attr := node.properties; attr != nil; attr = attr.next {
+		if C.GoString((*C.char)(unsafe.Pointer(attr.name))) == attrName {
+			id := C.xmlNodeListGetString(node.doc, attr.children, 1)
+			if id == nil {
+				continue
+			}
+			C.xmlAddID(nil, node.doc, id, attr)
+		}
+	}
+
+	return nil
 }
 
 func dumpDoc(doc *C.xmlDoc) []byte {
@@ -81,7 +141,7 @@ func closeDoc(doc *C.xmlDoc) {
 // the XML-DSIG standard. docStr is a template document meaning
 // that it contains a `Signature` element in the
 // http://www.w3.org/2000/09/xmldsig# namespace.
-func Sign(key []byte, doc []byte) ([]byte, error) {
+func Sign(key []byte, doc []byte, opts Options) ([]byte, error) {
 	ctx := C.xmlSecDSigCtxCreate(nil)
 	if ctx == nil {
 		return nil, errors.New("failed to create signature context")
@@ -97,7 +157,7 @@ func Sign(key []byte, doc []byte) ([]byte, error) {
 		return nil, errors.New("failed to load pem key")
 	}
 
-	parsedDoc, err := newDoc(doc)
+	parsedDoc, err := newDoc(doc, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -129,8 +189,8 @@ const (
 // Verify checks that the signature in docStr is valid according
 // to the XML-DSIG specification. publicKey is the public part of
 // the key used to sign docStr. If the signature is not correct,
-// this function returns ErrVarificationFailed.
-func Verify(publicKey []byte, doc []byte) error {
+// this function returns ErrVerificationFailed.
+func Verify(publicKey []byte, doc []byte, opts Options) error {
 	keysMngr := C.xmlSecKeysMngrCreate()
 	if keysMngr == nil {
 		return fmt.Errorf("xmlSecKeysMngrCreate failed")
@@ -168,7 +228,7 @@ func Verify(publicKey []byte, doc []byte) error {
 	}
 	defer C.xmlSecDSigCtxDestroy(dsigCtx)
 
-	parsedDoc, err := newDoc(doc)
+	parsedDoc, err := newDoc(doc, opts)
 	if err != nil {
 		return err
 	}

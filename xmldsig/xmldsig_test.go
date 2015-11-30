@@ -144,7 +144,7 @@ fBjXssrERn05kpBcrRfzou4r3DCgQFPhjxga</X509Certificate>
   </Signature>
 </Envelope>
 `
-	actualSignedString, err := Sign(key, docStr)
+	actualSignedString, err := Sign(key, docStr, Options{})
 	if err != nil {
 		t.Errorf("sign: %s", err)
 		return
@@ -162,7 +162,7 @@ fBjXssrERn05kpBcrRfzou4r3DCgQFPhjxga</X509Certificate>
 	if err != nil {
 		t.Errorf("marshal: %s", err)
 	}
-	actualSignedString, err = Sign(key, docStr)
+	actualSignedString, err = Sign(key, docStr, Options{})
 	if err != nil {
 		t.Errorf("sign: %s", err)
 		return
@@ -198,13 +198,13 @@ vCfqu9yXDYKVOBI57F0Efg==</SignatureValue>
 		return
 	}
 
-	if err := Verify(cert, actualSignedString); err != nil {
+	if err := Verify(cert, actualSignedString, Options{}); err != nil {
 		t.Errorf("verify: %s", err)
 		return
 	}
 
 	brokenDoc := strings.Replace(expectedSignedString, "Hello", "Goodbye", 1)
-	err = Verify(cert, []byte(brokenDoc))
+	err = Verify(cert, []byte(brokenDoc), Options{})
 	if err != ErrVerificationFailed {
 		t.Errorf("verify: expected verification failed, got %s", err)
 		return
