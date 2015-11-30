@@ -1,351 +1,206 @@
 package xmlenc
 
 import (
-	"errors"
+	"bytes"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/des"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha1"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/pem"
+	"encoding/xml"
 	"fmt"
-	"unsafe"
+	"hash"
+	"io"
 )
 
-// Note: on mac you need: brew install libxmlsec1 libxml2
+type method struct {
+	Algorithm string `xml:",attr"`
+}
 
-// #cgo pkg-config: xmlsec1
-// #include <xmlsec/xmlsec.h>
-// #include <xmlsec/xmltree.h>
-// #include <xmlsec/xmlenc.h>
-// #include <xmlsec/crypto.h>
-// #include <xmlsec/app.h>
+type encryptedData struct {
+	XMLName          string  `xml:"http://www.w3.org/2001/04/xmlenc# EncryptedData"`
+	ID               string  `xml:"Id,attr"`
+	Type             string  `xml:",attr"`
+	EncryptionMethod method  `xml:"EncryptionMethod"`
+	KeyInfo          keyInfo `xml:"http://www.w3.org/2000/09/xmldsig# KeyInfo"`
+	CipherData       *cipherData
+}
+
+type keyInfo struct {
+	XMLName      string        `xml:"http://www.w3.org/2000/09/xmldsig# KeyInfo"`
+	EncryptedKey *encryptedKey `xml:"http://www.w3.org/2001/04/xmlenc# EncryptedKey"`
+	X509Data     x509Data      `xml:"http://www.w3.org/2000/09/xmldsig# X509Data"`
+}
+
+type encryptedKey struct {
+	XMLName          string `xml:"http://www.w3.org/2001/04/xmlenc# EncryptedKey"`
+	EncryptionMethod *encryptionMethod
+	KeyInfo          *keyInfo
+	CipherData       *cipherData `xml:"http://www.w3.org/2001/04/xmlenc# CipherData"`
+}
+
+type encryptionMethod struct {
+	Algorithm    string `xml:",attr"`
+	DigestMethod method `xml:"http://www.w3.org/2000/09/xmldsig# DigestMethod"`
+}
+
+type x509Data struct {
+	XMLName         string `xml:"http://www.w3.org/2000/09/xmldsig# X509Data"`
+	X509Certificate string
+}
+
+type cipherData struct {
+	XMLName     string `xml:"http://www.w3.org/2001/04/xmlenc# CipherData"`
+	CipherValue string `xml:"CipherValue"`
+}
+
+// Decrypt searches the serialized XML document `doc` looking for
+// EncryptedData elements and decrypting them. It returns the
+// original document with the each EncryptedData element replaced
+// by the derived plaintext.
 //
-// static inline xmlSecKeyDataId MY_xmlSecKeyDataDesId() {
-//   return xmlSecOpenSSLKeyDataDesGetKlass();
-// }
-// static inline xmlSecKeyDataId MY_xmlSecKeyDataDsaId() {
-//   return xmlSecOpenSSLKeyDataDsaGetKlass();
-// }
-// static inline xmlSecKeyDataId MY_xmlSecKeyDataEcdsaId() {
-//   return xmlSecOpenSSLKeyDataEcdsaGetKlass();
-// }
-// static inline xmlSecKeyDataId MY_xmlSecKeyDataRsaId() {
-//   return xmlSecOpenSSLKeyDataRsaGetKlass();
-// }
-//
-import "C"
-
-// #cgo pkg-config: libxml-2.0
-// #include <libxml/parser.h>
-// #include <libxml/parserInternals.h>
-// #include <libxml/xmlmemory.h>
-// // Macro wrapper function
-// static inline void MY_xmlFree(void *p) {
-//   xmlFree(p);
-// }
-//
-import "C"
-
-func init() {
-	C.xmlInitParser()
-
-	if rv := C.xmlSecInit(); rv < 0 {
-		panic("xmlsec failed to initialize")
-	}
-
-	if rv := C.xmlSecCryptoAppInit(nil); rv < 0 {
-		panic("xmlsec crypto initialization failed.")
-	}
-	if rv := C.xmlSecCryptoInit(); rv < 0 {
-		panic("xmlsec crypto initialization failed.")
-	}
-}
-
-func newDoc(buf []byte) (*C.xmlDoc, error) {
-	ctx := C.xmlCreateMemoryParserCtxt((*C.char)(unsafe.Pointer(&buf[0])),
-		C.int(len(buf)))
-	if ctx == nil {
-		return nil, errors.New("error creating parser")
-	}
-	defer C.xmlFreeParserCtxt(ctx)
-
-	//C.xmlCtxtUseOptions(ctx, C.int(p.Options))
-	C.xmlParseDocument(ctx)
-
-	if ctx.wellFormed == C.int(0) {
-		return nil, errors.New("malformed XML")
-	}
-
-	doc := ctx.myDoc
-	if doc == nil {
-		return nil, errors.New("parse failed")
-	}
-	return doc, nil
-}
-
-func dumpDoc(doc *C.xmlDoc) []byte {
-	var buffer *C.xmlChar
-	var bufferSize C.int
-	C.xmlDocDumpMemory(doc, &buffer, &bufferSize)
-	rv := C.GoStringN((*C.char)(unsafe.Pointer(buffer)), bufferSize)
-	C.MY_xmlFree(unsafe.Pointer(buffer))
-
-	// TODO(ross): this is totally nasty un-idiomatic, but I'm
-	// tired of googling how to copy a []byte from a char*
-	return []byte(rv)
-}
-
-func closeDoc(doc *C.xmlDoc) {
-	C.xmlFreeDoc(doc)
-}
-
-type Context struct {
-	ctx      *C.xmlSecEncCtx
-	keysMngr *C.xmlSecKeysMngr
-}
-
-func (c *Context) Close() {
-	if c.ctx != nil {
-		C.xmlSecEncCtxDestroy(c.ctx)
-		c.ctx = nil
-	}
-
-	if c.keysMngr != nil {
-		C.xmlSecKeysMngrDestroy(c.keysMngr)
-		c.keysMngr = nil
-	}
-}
-
-func (c *Context) init() error {
-	if c.ctx != nil {
-		return nil
-	}
-
-	c.keysMngr = C.xmlSecKeysMngrCreate()
-	if c.keysMngr == nil {
-		return errors.New("xmlSecKeysMngrCreate failed")
-	}
-
-	if rv := C.xmlSecCryptoAppDefaultKeysMngrInit(c.keysMngr); rv < 0 {
-		return fmt.Errorf("xmlSecCryptoAppDefaultKeysMngrInit failed: %d", rv)
-	}
-
-	c.ctx = C.xmlSecEncCtxCreate(c.keysMngr)
-	if c.ctx == nil {
-		return errors.New("xmlSecEncCtxCreate failed")
-	}
-
-	return nil
-}
-
-const (
-	DES = iota
-	DSA
-	ECDSA
-	RSA
-)
-
-func (c *Context) AddKey(data []byte) error {
-	if err := c.init(); err != nil {
-		return err
-	}
-
-	key := C.xmlSecCryptoAppKeyLoadMemory(
-		(*C.xmlSecByte)(unsafe.Pointer(&data[0])),
-		C.uint(len(data)),
-		C.xmlSecKeyDataFormatPem,
-		nil,
-		nil,
-		nil)
-	if key == nil {
-		return errors.New("xmlSecCryptoAppKeyLoadMemory failed")
-	}
-
-	name := "k"
-	C.xmlSecKeySetName(key, (*C.xmlChar)(unsafe.Pointer(C.CString(name))))
-
-	if rv := C.xmlSecCryptoAppDefaultKeysMngrAdoptKey(c.keysMngr, key); rv < 0 {
-		return errors.New("xmlSecCryptoAppDefaultKeysMngrAdoptKey failed")
-	}
-
-	return nil
-}
-
-func (c *Context) AddCert(data []byte) error {
-	if err := c.init(); err != nil {
-		return err
-	}
-
-	/*
-		var xmlSecKeyType C.xmlSecKeyDataId
-		switch keyType {
-		case DES:
-			xmlSecKeyType = C.MY_xmlSecKeyDataDesId()
-		case DSA:
-			xmlSecKeyType = C.MY_xmlSecKeyDataDsaId()
-		case ECDSA:
-			xmlSecKeyType = C.MY_xmlSecKeyDataEcdsaId()
-		case RSA:
-			xmlSecKeyType = C.MY_xmlSecKeyDataRsaId()
-		default:
-			return errors.New("unknown key type")
-		}
-	*/
-
-	if rv := C.xmlSecCryptoAppKeysMngrCertLoadMemory(c.keysMngr,
-		(*C.xmlSecByte)(unsafe.Pointer(&data[0])),
-		C.uint(len(data)),
-		C.xmlSecKeyDataFormatCertPem, // https://www.aleksey.com/xmlsec/api/xmlsec-keysdata.html#XMLSECKEYDATAFORMAT
-		C.xmlSecKeyDataTypePublic); rv < 0 {
-		return errors.New("xmlSecCryptoAppKeysMngrCertLoadMemory failed")
-	}
-
-	return nil
-}
-
-// Encrypt encrypts `plaintext` according to the template `tmplDoc`.
-func (c *Context) Encrypt(tmplDoc []byte, plaintext []byte) ([]byte, error) {
-	if err := c.init(); err != nil {
-		return nil, err
-	}
-
-	parsedDoc, err := newDoc(tmplDoc)
-	if err != nil {
-		return nil, err
-	}
-	defer closeDoc(parsedDoc)
-
-	tmplNode := C.xmlSecFindNode(C.xmlDocGetRootElement(parsedDoc),
-		(*C.xmlChar)(unsafe.Pointer(&C.xmlSecNodeEncryptedData)),
-		(*C.xmlChar)(unsafe.Pointer(&C.xmlSecEncNs)))
-	if tmplNode == nil {
-		return nil, errors.New("cannot find start node")
-	}
-
-	// TODO(ross): actually use the requested cipher
-	c.ctx.encKey = C.xmlSecKeyGenerateByName(
-		(*C.xmlChar)(unsafe.Pointer(C.CString("aes"))),
-		128, C.xmlSecKeyDataTypeSession)
-	if c.ctx.encKey == nil {
-		return nil, errors.New("failed to generate session key")
-	}
-
-	if rv := C.xmlSecEncCtxXmlEncrypt(c.ctx, tmplNode,
-		C.xmlDocGetRootElement(parsedDoc)); rv < 0 {
-		return nil, errors.New("cannot encrypt")
-	}
-
-	return dumpDoc(parsedDoc), nil
-}
-func (c *Context) Decrypt(doc []byte) ([]byte, error) {
-	if err := c.init(); err != nil {
-		return nil, err
-	}
-
-	return nil, nil
-}
-
-/*
+// Key is a PEM-encoded RSA private key, or a binary TDES key or a
+// binary AES key, depending on the encryption type in use.
 func Decrypt(key []byte, doc []byte) ([]byte, error) {
+	out := bytes.NewBuffer(nil)
+	encoder := xml.NewEncoder(out)
+	decoder := xml.NewDecoder(bytes.NewReader(doc))
+	for {
+		t, err := decoder.Token()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return nil, err
+		}
 
-	parsedDoc, err := newDoc(doc)
-	if err != nil {
-		return nil, err
-	}
-	defer closeDoc(parsedDoc)
+		if startElement, ok := t.(xml.StartElement); ok {
+			if startElement.Name.Space == "http://www.w3.org/2001/04/xmlenc#" && startElement.Name.Local == "EncryptedData" {
+				d := encryptedData{}
+				if err := decoder.DecodeElement(&d, &startElement); err != nil {
+					return nil, err
+				}
 
-	node := C.xmlSecFindNode(C.xmlDocGetRootElement(parsedDoc),
-		(*C.xmlChar)(unsafe.Pointer(&C.xmlSecNodeEncryptedKey)),
-		(*C.xmlChar)(unsafe.Pointer(&C.xmlSecEncNs)))
-	if node == nil {
-		return nil, errors.New("cannot find start node")
-	}
+				plaintext, err := decryptEncryptedData(key, &d)
+				if err != nil {
+					return nil, err
+				}
 
-	ctx, err := newContext(key)
-	if err != nil {
-		return nil, err
-	}
-	defer closeContext(ctx)
+				encoder.Flush()
+				out.Write(plaintext)
+				continue
+			}
+		}
 
-	ctx.mode = C.xmlEncCtxModeEncryptedKey
+		encoder.EncodeToken(t)
+	}
+	encoder.Flush()
 
-	if rv := C.xmlSecEncCtxDecrypt(ctx, node); rv < 0 {
-		return nil, errors.New("cannot decrypt")
-	}
-	if ctx.result == nil {
-		return nil, errors.New("cannot decrypt")
-	}
-
-	ctx2 := C.xmlSecEncCtxCreate(nil)
-	if ctx2 == nil {
-		return nil, errors.New("failed to create signature context")
-	}
-
-	ctx2.encKey = C.xmlSecKeyReadMemory(C.MY_xmlSecKeyDataDesId(),
-		C.xmlSecBufferGetData(ctx.result),
-		C.xmlSecBufferGetSize(ctx.result))
-	if ctx2.encKey == nil {
-		return nil, errors.New("cannot load session key")
-	}
-	ctx2.mode = C.xmlEncCtxModeEncryptedData
-
-	node2 := C.xmlSecFindNode(C.xmlDocGetRootElement(parsedDoc),
-		(*C.xmlChar)(unsafe.Pointer(&C.xmlSecNodeEncryptedData)),
-		(*C.xmlChar)(unsafe.Pointer(&C.xmlSecEncNs)))
-	if node2 == nil {
-		return nil, errors.New("cannot find start node")
-	}
-
-	if rv := C.xmlSecEncCtxDecrypt(ctx2, node2); rv < 0 {
-		return nil, errors.New("cannot decrypt")
-	}
-	if ctx2.result == nil {
-		return nil, errors.New("cannot decrypt")
-	}
-
-	log.Panic("%s", string(dumpDoc(parsedDoc)))
-
-	// Apparently we can either have replaced the document or not, so if we
-	// have return it with dump.
-	if ctx2.resultReplaced != 0 {
-		return dumpDoc(parsedDoc), nil
-	} else {
-		sz := C.xmlSecBufferGetSize(ctx2.result)
-		buf := C.xmlSecBufferGetData(ctx2.result)
-		rv := C.GoStringN((*C.char)(unsafe.Pointer(buf)), C.int(sz)) // TODO(ross): eliminate double copy
-		return []byte(rv), nil
-	}
+	return out.Bytes(), nil
 }
 
-// x
-// x
-// x
-// x
-// x
-// x
-// x
-// x
-// x
-// x
-// x
-// x
-// x
-// x
-// x
-// x
-// x
-// x
-// x
-// x
-// x
-// x
-// x
-// x
-// x
-// x
-// x
-// x
-// x
-// x
-// x
-// x
-// x
-// x
-// x
-// x
-*/
+// decryptEncryptedData decrypts the EncryptedData element and returns the
+// plaintext.
+func decryptEncryptedData(key []byte, d *encryptedData) ([]byte, error) {
+	if d.KeyInfo.EncryptedKey != nil {
+		var err error
+		key, err = decryptEncryptedKey(key, d.KeyInfo.EncryptedKey)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	iv := []byte{}
+	ciphertext, err := base64.StdEncoding.DecodeString(d.CipherData.CipherValue)
+	if err != nil {
+		return nil, err
+	}
+
+	var blockCipher cipher.Block
+	switch d.EncryptionMethod.Algorithm {
+	case "http://www.w3.org/2001/04/xmlenc#tripledes-cbc":
+		blockCipher, err = des.NewTripleDESCipher(key)
+		if err != nil {
+			return nil, err
+		}
+		iv = ciphertext[:des.BlockSize]
+		ciphertext = ciphertext[des.BlockSize:]
+
+	case "http://www.w3.org/2001/04/xmlenc#aes128-cbc",
+		"http://www.w3.org/2001/04/xmlenc#aes192-cbc",
+		"http://www.w3.org/2001/04/xmlenc#aes256-cbc":
+		blockCipher, err = aes.NewCipher(key)
+		if err != nil {
+			return nil, err
+		}
+		iv = ciphertext[:aes.BlockSize]
+		ciphertext = ciphertext[aes.BlockSize:]
+
+	default:
+		return nil, fmt.Errorf("unsupported encryption method: %s", d.EncryptionMethod.Algorithm)
+	}
+
+	mode := cipher.NewCBCDecrypter(blockCipher, iv)
+	mode.CryptBlocks(ciphertext, ciphertext)
+
+	return ciphertext, nil
+}
+
+// decryptEncryptedKey returns the plaintext version of the EncryptedKey which is
+// encrypted using RSA-PKCS1v15 or RSA-OAEP-MGF1P and assuming the `key` is
+// a PEM-encoded RSA private key.
+func decryptEncryptedKey(key []byte, encryptedKey *encryptedKey) ([]byte, error) {
+	// All the supported encryption schemes are based on RSA, so `key` must be an
+	// RSA key. (c.f. http://www.w3.org/TR/2002/REC-xmlenc-core-20021210/Overview.html
+	// in the "Key Transport" section)
+	pemBlock, _ := pem.Decode(key)
+	if pemBlock == nil {
+		return nil, fmt.Errorf("Cannot parse key as PEM encoded RSA private key")
+	}
+	rsaPriv, err := x509.ParsePKCS1PrivateKey(pemBlock.Bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	// The only supported/required algorithm is SHA1
+	// (c.f. http://www.w3.org/TR/2001/PR-xmldsig-core-20010820/ section "Algorithms")
+	//
+	// TODO(ross): if RSA-PKCS1v15 is used, do we need to specify the digest algorithm?
+	var hashFunc hash.Hash
+	switch encryptedKey.EncryptionMethod.DigestMethod.Algorithm {
+	case "http://www.w3.org/2000/09/xmldsig#sha1":
+		hashFunc = sha1.New()
+	default:
+		return nil, fmt.Errorf("unsupported digest method: %s",
+			encryptedKey.EncryptionMethod.DigestMethod.Algorithm)
+	}
+
+	sessionKeyCiphertext, err := base64.StdEncoding.DecodeString(encryptedKey.CipherData.CipherValue)
+	if err != nil {
+		return nil, err
+	}
+
+	var sessionKeyPlaintext []byte
+	switch encryptedKey.EncryptionMethod.Algorithm {
+	case "http://www.w3.org/2001/04/xmlenc#rsa-1_5":
+		sessionKeyPlaintext, err = rsa.DecryptPKCS1v15(rand.Reader, rsaPriv,
+			sessionKeyCiphertext)
+		if err != nil {
+			return nil, err
+		}
+	case "http://www.w3.org/2001/04/xmlenc#rsa-oaep-mgf1p":
+		sessionKeyPlaintext, err = rsa.DecryptOAEP(hashFunc, rand.Reader,
+			rsaPriv, sessionKeyCiphertext, nil)
+		if err != nil {
+			return nil, err
+		}
+	default:
+		return nil, fmt.Errorf("unsupported encryption method: %s",
+			encryptedKey.EncryptionMethod.Algorithm)
+	}
+
+	return sessionKeyPlaintext, nil
+}
