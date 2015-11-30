@@ -12,6 +12,7 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"hash"
 	"io"
@@ -58,16 +59,15 @@ type cipherData struct {
 	CipherValue string `xml:"CipherValue"`
 }
 
+var ErrNoEncryptedDataFound = errors.New("no EncryptedData elements found")
+
 // Decrypt searches the serialized XML document `doc` looking for
-// EncryptedData elements and decrypting them. It returns the
-// original document with the each EncryptedData element replaced
-// by the derived plaintext.
+// an EncryptedData element. When found, it decrypts the element
+// and returns the plaintext of the encrypted section.
 //
 // Key is a PEM-encoded RSA private key, or a binary TDES key or a
 // binary AES key, depending on the encryption type in use.
 func Decrypt(key []byte, doc []byte) ([]byte, error) {
-	out := bytes.NewBuffer(nil)
-	encoder := xml.NewEncoder(out)
 	decoder := xml.NewDecoder(bytes.NewReader(doc))
 	for {
 		t, err := decoder.Token()
@@ -89,17 +89,11 @@ func Decrypt(key []byte, doc []byte) ([]byte, error) {
 					return nil, err
 				}
 
-				encoder.Flush()
-				out.Write(plaintext)
-				continue
+				return plaintext, nil
 			}
 		}
-
-		encoder.EncodeToken(t)
 	}
-	encoder.Flush()
-
-	return out.Bytes(), nil
+	return nil, ErrNoEncryptedDataFound
 }
 
 // decryptEncryptedData decrypts the EncryptedData element and returns the
