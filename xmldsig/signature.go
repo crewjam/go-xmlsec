@@ -1,6 +1,10 @@
 package xmldsig
 
-import "encoding/xml"
+import (
+	"encoding/base64"
+	"encoding/pem"
+	"encoding/xml"
+)
 
 // Method is part of Signature.
 type Method struct {
@@ -29,7 +33,7 @@ type Signature struct {
 	DigestMethod           Method             `xml:"SignedInfo>Reference>DigestMethod"`
 	DigestValue            string             `xml:"SignedInfo>Reference>DigestValue"`
 	SignatureValue         string             `xml:"SignatureValue"`
-	KeyName                string             `xml:"KeyInfo>KeyName"`
+	KeyName                string             `xml:"KeyInfo>KeyName,omitempty"`
 	X509Certificate        *SignatureX509Data `xml:"KeyInfo>X509Data,omitempty"`
 }
 
@@ -38,7 +42,12 @@ type SignatureX509Data struct {
 }
 
 // DefaultSignature populates a default Signature that uses c14n and SHA1.
-func DefaultSignature() Signature {
+func DefaultSignature(pemEncodedPublicKey []byte) Signature {
+	// xmlsec wants the key to be base64-encoded but *not* wrapped with the
+	// PEM flags
+	pemBlock, _ := pem.Decode(pemEncodedPublicKey)
+	certStr := base64.StdEncoding.EncodeToString(pemBlock.Bytes)
+
 	return Signature{
 		CanonicalizationMethod: Method{
 			Algorithm: "http://www.w3.org/TR/2001/REC-xml-c14n-20010315",
@@ -51,6 +60,9 @@ func DefaultSignature() Signature {
 		},
 		DigestMethod: Method{
 			Algorithm: "http://www.w3.org/2000/09/xmldsig#sha1",
+		},
+		X509Certificate: &SignatureX509Data{
+			X509Certificate: certStr,
 		},
 	}
 }

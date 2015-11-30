@@ -2,6 +2,7 @@ package xmldsig
 
 import (
 	"errors"
+	"fmt"
 	"unsafe"
 )
 
@@ -39,19 +40,45 @@ func init() {
 }
 
 func newContext(pemFormatKey []byte) (*C.xmlSecDSigCtx, error) {
-	ctx := C.xmlSecDSigCtxCreate(nil)
+	keysMngr := C.xmlSecKeysMngrCreate()
+	if rv := C.xmlSecCryptoAppDefaultKeysMngrInit(keysMngr); rv < 0 {
+		return nil, fmt.Errorf("xmlSecCryptoAppDefaultKeysMngrInit: %d", rv)
+	}
+	ctx := C.xmlSecDSigCtxCreate(keysMngr)
 	if ctx == nil {
 		return nil, errors.New("failed to create signature context")
 	}
 
-	ctx.signKey = C.xmlSecCryptoAppKeyLoadMemory(
+	key := C.xmlSecCryptoAppKeyLoadMemory(
 		(*C.xmlSecByte)(unsafe.Pointer(&pemFormatKey[0])),
 		C.xmlSecSize(len(pemFormatKey)),
 		C.xmlSecKeyDataFormatPem,
 		nil, nil, nil)
-	if ctx.signKey == nil {
-		return nil, errors.New("failed to load pem key")
+	if key == nil {
+		key = C.xmlSecKeyCreate()
+		if rv := C.xmlSecCryptoAppKeyCertLoadMemory(key,
+			(*C.xmlSecByte)(unsafe.Pointer(&pemFormatKey[0])),
+			C.xmlSecSize(len(pemFormatKey)),
+			C.xmlSecKeyDataFormatPem); rv < 0 {
+			return nil, fmt.Errorf("xmlSecCryptoAppKeyCertLoadMemory: %d", rv)
+		}
+		C.xmlSecCryptoAppDefaultKeysMngrAdoptKey(keysMngr, key)
 	}
+	ctx.signKey = key
+
+	/*
+		if rv := C.xmlSecCryptoAppKeysMngrCertLoadMemory(keysMngr,
+			(*C.xmlSecByte)(unsafe.Pointer(&pemFormatKey[0])),
+			C.xmlSecSize(len(pemFormatKey)),
+			C.xmlSecKeyDataFormatPem,
+			C.xmlSecKeyDataTypeTrusted); rv < 0 {
+
+			// Failed to load the key as a certificate, try as a key
+
+			ctx.
+		}
+	*/
+
 	return ctx, nil
 }
 
@@ -142,11 +169,42 @@ const (
 // the key used to sign docStr. If the signature is not correct,
 // this function returns ErrVarificationFailed.
 func Verify(publicKey []byte, doc []byte) error {
-	ctx, err := newContext(publicKey)
-	if err != nil {
-		return err
+	keysMngr := C.xmlSecKeysMngrCreate()
+	if keysMngr == nil {
+		return fmt.Errorf("xmlSecKeysMngrCreate failed")
 	}
-	defer closeContext(ctx)
+	defer C.xmlSecKeysMngrDestroy(keysMngr)
+
+	if rv := C.xmlSecCryptoAppDefaultKeysMngrInit(keysMngr); rv < 0 {
+		return fmt.Errorf("xmlSecCryptoAppDefaultKeysMngrInit failed")
+	}
+
+	key := C.xmlSecCryptoAppKeyLoadMemory(
+		(*C.xmlSecByte)(unsafe.Pointer(&publicKey[0])),
+		C.xmlSecSize(len(publicKey)),
+		C.xmlSecKeyDataFormatCertPem,
+		nil, nil, nil)
+	if key == nil {
+		return fmt.Errorf("xmlSecCryptoAppKeyLoadMemory failed")
+	}
+
+	if rv := C.xmlSecCryptoAppKeyCertLoadMemory(key,
+		(*C.xmlSecByte)(unsafe.Pointer(&publicKey[0])),
+		C.xmlSecSize(len(publicKey)),
+		C.xmlSecKeyDataFormatCertPem); rv < 0 {
+		C.xmlSecKeyDestroy(key)
+		return fmt.Errorf("xmlSecCryptoAppKeyCertLoad failed")
+	}
+
+	if rv := C.xmlSecCryptoAppDefaultKeysMngrAdoptKey(keysMngr, key); rv < 0 {
+		return fmt.Errorf("xmlSecCryptoAppDefaultKeysMngrAdoptKey failed")
+	}
+
+	dsigCtx := C.xmlSecDSigCtxCreate(keysMngr)
+	if dsigCtx == nil {
+		return fmt.Errorf("xmlSecDSigCtxCreate failed")
+	}
+	defer C.xmlSecDSigCtxDestroy(dsigCtx)
 
 	parsedDoc, err := newDoc(doc)
 	if err != nil {
@@ -161,11 +219,11 @@ func Verify(publicKey []byte, doc []byte) error {
 		return errors.New("cannot find start node")
 	}
 
-	if rv := C.xmlSecDSigCtxVerify(ctx, node); rv < 0 {
-		return errors.New("failed to verify")
+	if rv := C.xmlSecDSigCtxVerify(dsigCtx, node); rv < 0 {
+		return ErrVerificationFailed
 	}
 
-	if ctx.status != xmlSecDSigStatusSucceeded {
+	if dsigCtx.status != xmlSecDSigStatusSucceeded {
 		return ErrVerificationFailed
 	}
 	return nil
