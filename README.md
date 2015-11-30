@@ -12,14 +12,14 @@ A (partial) wrapper for [xmlsec](https://www.aleksey.com/xmlsec).
 
     key, _ := ioutil.ReadFile("saml.key")
     doc, _ := ioutil.ReadAll(os.Stdin)
-    signedDoc, err := xmldsig.Sign(key, doc)
+    signedDoc, err := xmldsig.Sign(key, doc, xmldsig.Options{})
     os.Stdout.Write(signedDoc)
 
 ## Verifying Example
 
     key, _ := ioutil.ReadFile("saml.crt")
     doc, _ := ioutil.ReadAll(os.Stdin)
-    err := xmldsig.Verify(key, doc)
+    err := xmldsig.Verify(key, doc, xmldsig.Options{})
     if err == xmldsig.ErrVerificationFailed {
       os.Exit(1)
     }
