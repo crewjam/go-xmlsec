@@ -39,53 +39,6 @@ func init() {
 	}
 }
 
-func newContext(pemFormatKey []byte) (*C.xmlSecDSigCtx, error) {
-	keysMngr := C.xmlSecKeysMngrCreate()
-	if rv := C.xmlSecCryptoAppDefaultKeysMngrInit(keysMngr); rv < 0 {
-		return nil, fmt.Errorf("xmlSecCryptoAppDefaultKeysMngrInit: %d", rv)
-	}
-	ctx := C.xmlSecDSigCtxCreate(keysMngr)
-	if ctx == nil {
-		return nil, errors.New("failed to create signature context")
-	}
-
-	key := C.xmlSecCryptoAppKeyLoadMemory(
-		(*C.xmlSecByte)(unsafe.Pointer(&pemFormatKey[0])),
-		C.xmlSecSize(len(pemFormatKey)),
-		C.xmlSecKeyDataFormatPem,
-		nil, nil, nil)
-	if key == nil {
-		key = C.xmlSecKeyCreate()
-		if rv := C.xmlSecCryptoAppKeyCertLoadMemory(key,
-			(*C.xmlSecByte)(unsafe.Pointer(&pemFormatKey[0])),
-			C.xmlSecSize(len(pemFormatKey)),
-			C.xmlSecKeyDataFormatPem); rv < 0 {
-			return nil, fmt.Errorf("xmlSecCryptoAppKeyCertLoadMemory: %d", rv)
-		}
-		C.xmlSecCryptoAppDefaultKeysMngrAdoptKey(keysMngr, key)
-	}
-	ctx.signKey = key
-
-	/*
-		if rv := C.xmlSecCryptoAppKeysMngrCertLoadMemory(keysMngr,
-			(*C.xmlSecByte)(unsafe.Pointer(&pemFormatKey[0])),
-			C.xmlSecSize(len(pemFormatKey)),
-			C.xmlSecKeyDataFormatPem,
-			C.xmlSecKeyDataTypeTrusted); rv < 0 {
-
-			// Failed to load the key as a certificate, try as a key
-
-			ctx.
-		}
-	*/
-
-	return ctx, nil
-}
-
-func closeContext(ctx *C.xmlSecDSigCtx) {
-	C.xmlSecDSigCtxDestroy(ctx)
-}
-
 func newDoc(buf []byte) (*C.xmlDoc, error) {
 	ctx := C.xmlCreateMemoryParserCtxt((*C.char)(unsafe.Pointer(&buf[0])),
 		C.int(len(buf)))
@@ -129,11 +82,20 @@ func closeDoc(doc *C.xmlDoc) {
 // that it contains a `Signature` element in the
 // http://www.w3.org/2000/09/xmldsig# namespace.
 func Sign(key []byte, doc []byte) ([]byte, error) {
-	ctx, err := newContext(key)
-	if err != nil {
-		return nil, err
+	ctx := C.xmlSecDSigCtxCreate(nil)
+	if ctx == nil {
+		return nil, errors.New("failed to create signature context")
 	}
-	defer closeContext(ctx)
+	defer C.xmlSecDSigCtxDestroy(ctx)
+
+	ctx.signKey = C.xmlSecCryptoAppKeyLoadMemory(
+		(*C.xmlSecByte)(unsafe.Pointer(&key[0])),
+		C.xmlSecSize(len(key)),
+		C.xmlSecKeyDataFormatPem,
+		nil, nil, nil)
+	if ctx.signKey == nil {
+		return nil, errors.New("failed to load pem key")
+	}
 
 	parsedDoc, err := newDoc(doc)
 	if err != nil {
