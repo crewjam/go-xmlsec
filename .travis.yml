@@ -6,14 +6,5 @@ addons:
     - libxml2-dev
     - libxmlsec1-dev
 
-before_install:
-  - go get github.com/axw/gocov/gocov
-  - go get github.com/mattn/goveralls
-  - go get code.google.com/p/go.tools/cmd/cover
-
-script:
-  - go test -v -covermode=count -coverprofile=coverage.out ./...
-  - goveralls -coverprofile=coverage.out -service travis-ci -repotoken $COVERALLS_TOKEN
-
 go:
   - 1.5
