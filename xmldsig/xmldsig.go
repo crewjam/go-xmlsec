@@ -79,32 +79,28 @@ func newDoc(buf []byte, opts Options) (*C.xmlDoc, error) {
 	}
 
 	for _, idattr := range opts.XMLID {
-		if err := addIDAttr(C.xmlDocGetRootElement(doc),
-			idattr.AttributeName, idattr.ElementName, idattr.ElementNamespace); err != nil {
-			return nil, err
-		}
+		addIDAttr(C.xmlDocGetRootElement(doc),
+			idattr.AttributeName, idattr.ElementName, idattr.ElementNamespace)
 	}
 	return doc, nil
 }
 
-func addIDAttr(node *C.xmlNode, attrName, nodeName, nsHref string) error {
+func addIDAttr(node *C.xmlNode, attrName, nodeName, nsHref string) {
 	// process children first because it does not matter much but does simplify code
 	cur := C.xmlSecGetNextElementNode(node.children)
 	for {
 		if cur == nil {
 			break
 		}
-		if err := addIDAttr(cur, attrName, nodeName, nsHref); err != nil {
-			return err
-		}
+		addIDAttr(cur, attrName, nodeName, nsHref)
 		cur = C.xmlSecGetNextElementNode(cur.next)
 	}
 
 	if C.GoString((*C.char)(unsafe.Pointer(node.name))) != nodeName {
-		return nil
+		return
 	}
 	if nsHref != "" && node.ns != nil && C.GoString((*C.char)(unsafe.Pointer(node.ns.href))) != nsHref {
-		return nil
+		return
 	}
 
 	// the attribute with name equal to attrName should exist
@@ -118,7 +114,7 @@ func addIDAttr(node *C.xmlNode, attrName, nodeName, nsHref string) error {
 		}
 	}
 
-	return nil
+	return
 }
 
 func dumpDoc(doc *C.xmlDoc) []byte {
