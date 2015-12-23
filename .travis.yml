@@ -1,4 +1,5 @@
 language: go
+sudo: false  # silence warning
 
 addons:
   apt:
@@ -8,6 +9,10 @@ addons:
 
 go:
   - 1.5
+
+install:
+ - go get -t ./...
+ - go get github.com/golang/lint/golint
 
 script:
  - golint *.go
