@@ -88,6 +88,20 @@ type EncryptOptions struct {
 
 var errInvalidAlgorithm = errors.New("invalid algorithm")
 
+// global string constants
+// Note: the invocations of C.CString() here return a pointer to a string
+// allocated from the C heap that would normally need to freed by calling
+// C.free, but because these are global, we can just leak them.
+var (
+	constDsigNamespace = (*C.xmlChar)(unsafe.Pointer(C.CString("http://www.w3.org/2000/09/xmldsig#")))
+	constDigestMethod  = (*C.xmlChar)(unsafe.Pointer(C.CString("DigestMethod")))
+	constAlgorithm     = (*C.xmlChar)(unsafe.Pointer(C.CString("Algorithm")))
+	constSha512        = (*C.xmlChar)(unsafe.Pointer(C.CString("http://www.w3.org/2001/04/xmlenc#sha512")))
+	constSha384        = (*C.xmlChar)(unsafe.Pointer(C.CString("http://www.w3.org/2001/04/xmldsig-more#sha384")))
+	constSha256        = (*C.xmlChar)(unsafe.Pointer(C.CString("http://www.w3.org/2001/04/xmlenc#sha256")))
+	constSha1          = (*C.xmlChar)(unsafe.Pointer(C.CString("http://www.w3.org/2000/09/xmldsig#sha1")))
+)
+
 // Encrypt encrypts the XML document to publicKey and returns the encrypted
 // document.
 func Encrypt(publicKey, doc []byte, opts EncryptOptions) ([]byte, error) {
@@ -197,29 +211,27 @@ func Encrypt(publicKey, doc []byte, opts EncryptOptions) ([]byte, error) {
 	if keyInfoNode2 == nil {
 		return nil, mustPopError()
 	}
+
 	// Add a DigestMethod element to the encryption method node
 	{
 		encKeyMethod := C.xmlSecTmplEncDataGetEncMethodNode(encKeyNode)
-		var ns = constXMLChar("http://www.w3.org/2000/09/xmldsig#")
-		var strDigestMethod = constXMLChar("DigestMethod")
-		var strAlgorithm = constXMLChar("Algorithm")
 		var algorithm *C.xmlChar
 		switch opts.DigestAlgorithm {
 		case Sha512:
-			algorithm = constXMLChar("http://www.w3.org/2001/04/xmlenc#sha512")
+			algorithm = constSha512
 		case Sha384:
-			algorithm = constXMLChar("http://www.w3.org/2001/04/xmldsig-more#sha384")
+			algorithm = constSha384
 		case Sha256:
-			algorithm = constXMLChar("http://www.w3.org/2001/04/xmlenc#sha256")
+			algorithm = constSha256
 		case Sha1:
-			algorithm = constXMLChar("http://www.w3.org/2000/09/xmldsig#sha1")
+			algorithm = constSha1
 		case DefaultDigestAlgorithm:
-			algorithm = constXMLChar("http://www.w3.org/2000/09/xmldsig#sha1")
+			algorithm = constSha1
 		default:
 			return nil, errInvalidAlgorithm
 		}
-		node := C.xmlSecAddChild(encKeyMethod, strDigestMethod, ns)
-		C.xmlSetProp(node, strAlgorithm, algorithm)
+		node := C.xmlSecAddChild(encKeyMethod, constDigestMethod, constDsigNamespace)
+		C.xmlSetProp(node, constAlgorithm, algorithm)
 	}
 
 	// add our certificate to KeyInfoNode
