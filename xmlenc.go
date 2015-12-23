@@ -1,5 +1,6 @@
-package xmlenc
+package xmlsec
 
+/*
 import (
 	"bytes"
 	"crypto/aes"
@@ -211,3 +212,4 @@ func decryptEncryptedKey(key []byte, encryptedKey *encryptedKey) ([]byte, error)
 
 	return sessionKeyPlaintext, nil
 }
+*/

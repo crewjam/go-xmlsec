@@ -1,0 +1,322 @@
+package xmlsec
+
+// Note: on mac you need: brew install libxmlsec1 libxml2
+
+// #cgo pkg-config: xmlsec1
+// #include <xmlsec/xmlsec.h>
+// #include <xmlsec/xmltree.h>
+// #include <xmlsec/xmlenc.h>
+// #include <xmlsec/errors.h>
+// #include <xmlsec/templates.h>
+// #include <xmlsec/crypto.h>
+//
+// static inline xmlSecKeyDataId MY_xmlSecKeyDataAesId(void) {
+//   return xmlSecKeyDataAesId;
+// }
+//
+// static inline xmlSecTransformId MY_xmlSecTransformAes128CbcId(void) {
+//   return xmlSecTransformAes128CbcId;
+// }
+//
+// static inline xmlSecTransformId MY_xmlSecTransformRsaOaepId(void) {
+//   return xmlSecTransformRsaOaepId;
+// }
+//
+// static inline xmlSecKeyDataId MY_xmlSecKeyDataDesId(void) {
+//    return xmlSecKeyDataDesId;
+// }
+// static inline xmlSecTransformId MY_xmlSecTransformAes192CbcId(void) {
+//    return xmlSecTransformAes192CbcId;
+// }
+// static inline xmlSecTransformId MY_xmlSecTransformAes256CbcId(void) {
+//    return xmlSecTransformAes256CbcId;
+// }
+// static inline xmlSecTransformId MY_xmlSecTransformDes3CbcId(void) {
+//    return xmlSecTransformDes3CbcId;
+// }
+// static inline xmlSecTransformId MY_xmlSecTransformRsaPkcs1Id(void) {
+//    return xmlSecTransformRsaPkcs1Id;
+// }
+//
+import "C"
+
+// #cgo pkg-config: libxml-2.0
+// #include <libxml/parser.h>
+// #include <libxml/parserInternals.h>
+// #include <libxml/xmlmemory.h>
+// // Macro wrapper function
+// static inline void MY_xmlFree(void *p) {
+//   xmlFree(p);
+// }
+import "C"
+
+import (
+	"errors"
+	"fmt"
+	"unsafe"
+)
+
+// void onError_cgo(char *file, int line, char *funcName, char *errorObject, char *errorSubject, int reason, char *msg);
+import "C"
+
+func init() {
+	C.xmlInitParser()
+
+	if rv := C.xmlSecInit(); rv < 0 {
+		panic("xmlsec failed to initialize")
+	}
+	if rv := C.xmlSecCryptoAppInit(nil); rv < 0 {
+		panic("xmlsec crypto initialization failed.")
+	}
+	if rv := C.xmlSecCryptoInit(); rv < 0 {
+		panic("xmlsec crypto initialization failed.")
+	}
+
+	C.xmlSecErrorsSetCallback((C.xmlSecErrorsCallback)(unsafe.Pointer(C.onError_cgo)))
+}
+
+func newDoc(buf []byte) (*C.xmlDoc, error) {
+	ctx := C.xmlCreateMemoryParserCtxt((*C.char)(unsafe.Pointer(&buf[0])),
+		C.int(len(buf)))
+	if ctx == nil {
+		return nil, errors.New("error creating parser")
+	}
+	defer C.xmlFreeParserCtxt(ctx)
+
+	//C.xmlCtxtUseOptions(ctx, C.int(p.Options))
+	C.xmlParseDocument(ctx)
+
+	if ctx.wellFormed == C.int(0) {
+		return nil, errors.New("malformed XML")
+	}
+
+	doc := ctx.myDoc
+	if doc == nil {
+		return nil, errors.New("parse failed")
+	}
+
+	return doc, nil
+}
+
+func closeDoc(doc *C.xmlDoc) {
+	C.xmlFreeDoc(doc)
+}
+
+func dumpDoc(doc *C.xmlDoc) []byte {
+	var buffer *C.xmlChar
+	var bufferSize C.int
+	C.xmlDocDumpMemory(doc, &buffer, &bufferSize)
+	rv := C.GoStringN((*C.char)(unsafe.Pointer(buffer)), bufferSize)
+	C.MY_xmlFree(unsafe.Pointer(buffer))
+
+	// TODO(ross): this is totally nasty un-idiomatic, but I'm
+	// tired of googling how to copy a []byte from a char*
+	return []byte(rv)
+}
+
+func constXmlChar(s string) *C.xmlChar {
+	return (*C.xmlChar)(unsafe.Pointer(C.CString(s)))
+}
+
+const (
+	DefaultAlgorithm = iota
+	Aes128Cbc
+	Aes192Cbc
+	Aes256Cbc
+	Des3Cbc
+	DsaSha1
+	Sha1
+	Sha256
+	Sha384
+	Sha512
+	RsaOaep
+	RsaPkcs1
+)
+
+type Options struct {
+	SessionCipher   int
+	Cipher          int
+	DigestAlgorithm int
+}
+
+// XmlEncrypt encrypts the XML document to publicKey.
+func XmlEncrypt(publicKey, doc []byte, opts Options) ([]byte, error) {
+	startProcessingXML()
+	defer stopProcessingXML()
+
+	keysMngr := C.xmlSecKeysMngrCreate()
+	if keysMngr == nil {
+		return nil, fmt.Errorf("xmlSecKeysMngrCreate failed")
+	}
+	defer C.xmlSecKeysMngrDestroy(keysMngr)
+
+	if rv := C.xmlSecCryptoAppDefaultKeysMngrInit(keysMngr); rv < 0 {
+		return nil, fmt.Errorf("xmlSecCryptoAppDefaultKeysMngrInit failed")
+	}
+
+	key := C.xmlSecCryptoAppKeyLoadMemory(
+		(*C.xmlSecByte)(unsafe.Pointer(&publicKey[0])),
+		C.xmlSecSize(len(publicKey)),
+		C.xmlSecKeyDataFormatCertPem,
+		nil, nil, nil)
+	if key == nil {
+		return nil, fmt.Errorf("xmlSecCryptoAppKeyLoadMemory failed")
+	}
+
+	if rv := C.xmlSecCryptoAppKeyCertLoadMemory(key,
+		(*C.xmlSecByte)(unsafe.Pointer(&publicKey[0])),
+		C.xmlSecSize(len(publicKey)),
+		C.xmlSecKeyDataFormatCertPem); rv < 0 {
+		C.xmlSecKeyDestroy(key)
+		return nil, fmt.Errorf("xmlSecCryptoAppKeyCertLoad failed")
+	}
+
+	if rv := C.xmlSecCryptoAppDefaultKeysMngrAdoptKey(keysMngr, key); rv < 0 {
+		return nil, fmt.Errorf("xmlSecCryptoAppDefaultKeysMngrAdoptKey failed")
+	}
+
+	parsedDoc, err := newDoc(doc)
+	if err != nil {
+		return nil, err
+	}
+	defer closeDoc(parsedDoc)
+
+	var sessionCipherTransform C.xmlSecTransformId
+	switch opts.SessionCipher {
+	case DefaultAlgorithm:
+		sessionCipherTransform = C.MY_xmlSecTransformAes256CbcId()
+	case Aes256Cbc:
+		sessionCipherTransform = C.MY_xmlSecTransformAes256CbcId()
+	case Aes192Cbc:
+		sessionCipherTransform = C.MY_xmlSecTransformAes192CbcId()
+	case Aes128Cbc:
+		sessionCipherTransform = C.MY_xmlSecTransformAes128CbcId()
+	case Des3Cbc:
+		sessionCipherTransform = C.MY_xmlSecTransformDes3CbcId()
+	default:
+		return nil, fmt.Errorf("XXX")
+	}
+
+	// create encryption template to encrypt XML file and replace
+	// its content with encryption result
+	encDataNode := C.xmlSecTmplEncDataCreate(parsedDoc, sessionCipherTransform,
+		nil, (*C.xmlChar)(unsafe.Pointer(&C.xmlSecTypeEncElement)), nil, nil)
+	if encDataNode == nil {
+		return nil, fmt.Errorf("xmlSecTmplEncDataCreate failed")
+	}
+	defer func() {
+		if encDataNode != nil {
+			C.xmlFreeNode(encDataNode)
+			encDataNode = nil
+		}
+	}()
+
+	// we want to put encrypted data in the <enc:CipherValue/> node
+	if C.xmlSecTmplEncDataEnsureCipherValue(encDataNode) == nil {
+		return nil, fmt.Errorf("xmlSecTmplEncDataEnsureCipherValue failed")
+	}
+
+	// add <dsig:KeyInfo/>
+	keyInfoNode := C.xmlSecTmplEncDataEnsureKeyInfo(encDataNode, nil)
+	if keyInfoNode == nil {
+		return nil, fmt.Errorf("xmlSecTmplEncDataEnsureKeyInfo failed")
+	}
+
+	// add <enc:EncryptedKey/> to store the encrypted session key
+	var cipherTransform C.xmlSecTransformId
+	switch opts.Cipher {
+	case DefaultAlgorithm:
+		cipherTransform = C.MY_xmlSecTransformRsaOaepId()
+	case RsaOaep:
+		cipherTransform = C.MY_xmlSecTransformRsaOaepId()
+	case RsaPkcs1:
+		cipherTransform = C.MY_xmlSecTransformRsaPkcs1Id()
+	}
+	encKeyNode := C.xmlSecTmplKeyInfoAddEncryptedKey(keyInfoNode, cipherTransform, nil, nil, nil)
+	if encKeyNode == nil {
+		return nil, fmt.Errorf("xmlSecTmplKeyInfoAddEncryptedKey failed")
+	}
+
+	// we want to put encrypted key in the <enc:CipherValue/> node
+	if C.xmlSecTmplEncDataEnsureCipherValue(encKeyNode) == nil {
+		return nil, fmt.Errorf("xmlSecTmplEncDataEnsureCipherValue failed")
+	}
+
+	// add <dsig:KeyInfo/> and <dsig:KeyName/> nodes to <enc:EncryptedKey/>
+	keyInfoNode2 := C.xmlSecTmplEncDataEnsureKeyInfo(encKeyNode, nil)
+	if keyInfoNode2 == nil {
+		return nil, fmt.Errorf("xmlSecTmplEncDataEnsureKeyInfo failed")
+	}
+	// Add a DigestMethod element to the encryption method node
+	{
+		encKeyMethod := C.xmlSecTmplEncDataGetEncMethodNode(encKeyNode)
+		var ns = constXmlChar("http://www.w3.org/2000/09/xmldsig#")
+		var strDigestMethod = constXmlChar("DigestMethod")
+		var strAlgorithm = constXmlChar("Algorithm")
+		var algorithm *C.xmlChar
+		switch opts.DigestAlgorithm {
+		case Sha512:
+			algorithm = constXmlChar("http://www.w3.org/2001/04/xmlenc#sha512")
+		case Sha384:
+			algorithm = constXmlChar("http://www.w3.org/2001/04/xmldsig-more#sha384")
+		case Sha256:
+			algorithm = constXmlChar("http://www.w3.org/2001/04/xmlenc#sha256")
+		case Sha1:
+			algorithm = constXmlChar("http://www.w3.org/2000/09/xmldsig#sha1")
+		case DefaultAlgorithm:
+			algorithm = constXmlChar("http://www.w3.org/2000/09/xmldsig#sha1")
+		default:
+			return nil, fmt.Errorf("unknown digest algorithm %d", opts.DigestAlgorithm)
+		}
+		node := C.xmlSecAddChild(encKeyMethod, strDigestMethod, ns)
+		C.xmlSetProp(node, strAlgorithm, algorithm)
+	}
+
+	// add our certificate to KeyInfoNode
+	x509dataNode := C.xmlSecTmplKeyInfoAddX509Data(keyInfoNode2)
+	if x509dataNode == nil {
+		return nil, fmt.Errorf("xmlSecTmplKeyInfoAddX509Data failed")
+	}
+	if dataNode := C.xmlSecTmplX509DataAddCertificate(x509dataNode); dataNode == nil {
+		return nil, fmt.Errorf("xmlSecTmplX509DataAddCertificate failed")
+	}
+
+	// create encryption context
+	var encCtx = C.xmlSecEncCtxCreate(keysMngr)
+	if encCtx == nil {
+		return nil, fmt.Errorf("xmlSecEncCtxCreate failed")
+	}
+	defer C.xmlSecEncCtxDestroy(encCtx)
+
+	// generate a key of the appropriate type
+	switch opts.SessionCipher {
+	case DefaultAlgorithm:
+		encCtx.encKey = C.xmlSecKeyGenerate(C.MY_xmlSecKeyDataAesId(), 256,
+			C.xmlSecKeyDataTypeSession)
+	case Aes128Cbc:
+		encCtx.encKey = C.xmlSecKeyGenerate(C.MY_xmlSecKeyDataAesId(), 128,
+			C.xmlSecKeyDataTypeSession)
+	case Aes192Cbc:
+		encCtx.encKey = C.xmlSecKeyGenerate(C.MY_xmlSecKeyDataAesId(), 192,
+			C.xmlSecKeyDataTypeSession)
+	case Aes256Cbc:
+		encCtx.encKey = C.xmlSecKeyGenerate(C.MY_xmlSecKeyDataAesId(), 256,
+			C.xmlSecKeyDataTypeSession)
+	case Des3Cbc:
+		encCtx.encKey = C.xmlSecKeyGenerate(C.MY_xmlSecKeyDataDesId(), 192,
+			C.xmlSecKeyDataTypeSession)
+	default:
+		return nil, fmt.Errorf("unknown cipher type %d", opts.SessionCipher)
+	}
+	if encCtx.encKey == nil {
+		return nil, fmt.Errorf("xmlSecKeyGenerate failed")
+	}
+
+	// encrypt the data
+	if rv := C.xmlSecEncCtxXmlEncrypt(encCtx, encDataNode, C.xmlDocGetRootElement(parsedDoc)); rv < 0 {
+		return nil, fmt.Errorf("xmlSecEncCtxXmlEncrypt failed")
+	}
+	encDataNode = nil // the template is inserted in the doc, so we don't own it
+
+	return dumpDoc(parsedDoc), nil
+}

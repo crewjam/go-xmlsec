@@ -1,4 +1,4 @@
-package xmldsig
+package xmlsec
 
 import (
 	"encoding/base64"
