@@ -145,7 +145,7 @@ func (testSuite *DecryptTest) TestInvalid(c *C) {
 	c.Assert(err, ErrorMatches, "xmlSecFindNode cannot find EncryptedData node")
 
 	_, err = DecryptXML([]byte("XXX"), testSuite.DocStr)
-	c.Assert(err, ErrorMatches, "func=xmlSecOpenSSLAppKeyLoadBIO:file=app.c:line=263:obj=:subj=PEM_read_bio_PrivateKey and PEM_read_bio_PUBKEY:error=4: ; func=xmlSecOpenSSLAppKeyLoadMemory:file=app.c:line=205:obj=:subj=xmlSecOpenSSLAppKeyLoadBIO:error=1: ")
+	c.Assert(err, ErrorMatches, "func=xmlSecOpenSSLAppKeyLoadBIO.*")
 
 	docStr = []byte(`<?xml version="1.0" encoding="UTF-8"?><saml2p:Response xmlns:saml2p="urn:oasis:names:tc:SAML:2.0:protocol" Destination="https://15661444.ngrok.io/saml2/acs" ID="_59c2431b4916af2018984213940ee675" InResponseTo="id-3d21faf29a101222d740735fa512f161" IssueInstant="2015-11-29T21:29:09.991Z" Version="2.0"><saml2:Issuer xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion" Format="urn:oasis:names:tc:SAML:2.0:nameid-format:entity">https://idp.testshib.org/idp/shibboleth</saml2:Issuer><saml2p:Status><saml2p:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success"/></saml2p:Status><saml2:EncryptedAssertion xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion"><xenc:EncryptedData xmlns:xenc="http://www.w3.org/2001/04/xmlenc#" Id="_62d64ca491a287a346272669fbe93191" Type="http://www.w3.org/2001/04/xmlenc#Element">invalid<`)
 	_, err = DecryptXML(testSuite.Key, docStr)
@@ -205,7 +205,7 @@ func (testSuite *DecryptTest) TestInvalid(c *C) {
 </X>
 `)
 	_, err = DecryptXML(testSuite.Key, docStr)
-	c.Assert(err, ErrorMatches, "func=xmlSecOpenSSLX509StoreVerify:file=x509vfy.c:line=360:obj=x509-store:subj=X509_verify_cert:error=4:subj=/C=US/ST=GA/O=foo/CN=localhost;err=18;msg=self signed certificate; func=xmlSecOpenSSLX509StoreVerify:file=x509vfy.c:line=408:obj=x509-store:subj=:error=71:err=18;msg=self signed certificate; func=xmlSecBase64CtxDecodeByte:file=base64.c:line=441:obj=:subj=:error=12:inByte=0x3f; func=xmlSecBase64CtxDecode:file=base64.c:line=612:obj=:subj=xmlSecBase64CtxDecodeByte:error=1:status=4; func=xmlSecBase64CtxUpdate:file=base64.c:line=268:obj=:subj=xmlSecBase64CtxDecode:error=1: ; func=xmlSecBase64Execute:file=base64.c:line=949:obj=base64:subj=xmlSecBase64CtxUpdate:error=1: ; func=xmlSecTransformDefaultPushBin:file=transforms.c:line=2207:obj=base64:subj=xmlSecTransformExecute:error=1:final=1; func=xmlSecTransformCtxBinaryExecute:file=transforms.c:line=1118:obj=:subj=xmlSecTransformCtxPushBin:error=1:dataSize=174; func=xmlSecEncCtxDecryptToBuffer:file=xmlenc.c:line=741:obj=:subj=xmlSecTransformCtxBinaryExecute:error=1: ; func=xmlSecKeysMngrGetKey:file=keys.c:line=1370:obj=:subj=xmlSecKeysMngrFindKey:error=1: ; func=xmlSecEncCtxEncDataNodeRead:file=xmlenc.c:line=957:obj=:subj=:error=45: ; func=xmlSecEncCtxDecryptToBuffer:file=xmlenc.c:line=715:obj=:subj=xmlSecEncCtxEncDataNodeRead:error=1: ; func=xmlSecEncCtxDecrypt:file=xmlenc.c:line=623:obj=:subj=xmlSecEncCtxDecryptToBuffer:error=1: ")
+	c.Assert(err, ErrorMatches, "func=xmlSecOpenSSLX509StoreVerify.*")
 
 	docStr = []byte(`<?xml version="1.0" encoding="UTF-8"?>
 <X>
@@ -233,7 +233,7 @@ func (testSuite *DecryptTest) TestInvalid(c *C) {
 </X>
 `)
 	_, err = DecryptXML(testSuite.Key, docStr)
-	c.Assert(err, ErrorMatches, "func=xmlSecOpenSSLX509StoreVerify:file=x509vfy.c:line=360:obj=x509-store:subj=X509_verify_cert:error=4:subj=/C=US/ST=GA/O=foo/CN=localhost;err=18;msg=self signed certificate; func=xmlSecOpenSSLX509StoreVerify:file=x509vfy.c:line=408:obj=x509-store:subj=:error=71:err=18;msg=self signed certificate; func=xmlSecBase64CtxDecodeByte:file=base64.c:line=441:obj=:subj=:error=12:inByte=0x3f; func=xmlSecBase64CtxDecode:file=base64.c:line=612:obj=:subj=xmlSecBase64CtxDecodeByte:error=1:status=4; func=xmlSecBase64CtxUpdate:file=base64.c:line=268:obj=:subj=xmlSecBase64CtxDecode:error=1: ; func=xmlSecBase64Execute:file=base64.c:line=949:obj=base64:subj=xmlSecBase64CtxUpdate:error=1: ; func=xmlSecTransformDefaultPushBin:file=transforms.c:line=2207:obj=base64:subj=xmlSecTransformExecute:error=1:final=1; func=xmlSecTransformCtxBinaryExecute:file=transforms.c:line=1118:obj=:subj=xmlSecTransformCtxPushBin:error=1:dataSize=10306; func=xmlSecEncCtxDecryptToBuffer:file=xmlenc.c:line=741:obj=:subj=xmlSecTransformCtxBinaryExecute:error=1: ; func=xmlSecEncCtxDecrypt:file=xmlenc.c:line=623:obj=:subj=xmlSecEncCtxDecryptToBuffer:error=1: ")
+	c.Assert(err, ErrorMatches, "func=xmlSecOpenSSLX509StoreVerify.*")
 
 	docStr = []byte(`<?xml version="1.0" encoding="UTF-8"?>
 <X>
@@ -261,5 +261,5 @@ func (testSuite *DecryptTest) TestInvalid(c *C) {
 </X>
 `)
 	_, err = DecryptXML(testSuite.Key, docStr)
-	c.Assert(err, ErrorMatches, "func=xmlSecTransformNodeRead:file=transforms.c:line=1543:obj=:subj=xmlSecTransformIdListFindByHref:error=1:href=http://www.w3.org/2001/04/xmlenc#aes999-cbc; func=xmlSecTransformCtxNodeRead:file=transforms.c:line=694:obj=:subj=xmlSecTransformNodeRead:error=1:name=EncryptionMethod; func=xmlSecEncCtxEncDataNodeRead:file=xmlenc.c:line=905:obj=:subj=xmlSecTransformCtxNodeRead:error=1:node=EncryptionMethod; func=xmlSecEncCtxDecryptToBuffer:file=xmlenc.c:line=715:obj=:subj=xmlSecEncCtxEncDataNodeRead:error=1: ; func=xmlSecEncCtxDecrypt:file=xmlenc.c:line=623:obj=:subj=xmlSecEncCtxDecryptToBuffer:error=1: ")
+	c.Assert(err, ErrorMatches, "func=xmlSecTransformNodeRead.*")
 }
