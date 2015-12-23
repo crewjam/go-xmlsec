@@ -27,9 +27,6 @@ import "C"
 // }
 import "C"
 
-// void captureXmlErrors();
-import "C"
-
 func init() {
 	C.xmlInitParser()
 
@@ -42,8 +39,6 @@ func init() {
 	if rv := C.xmlSecCryptoInit(); rv < 0 {
 		panic("xmlsec crypto initialization failed.")
 	}
-
-	C.captureXmlErrors()
 }
 
 func newDoc(buf []byte, idattrs []XMLIDOption) (*C.xmlDoc, error) {

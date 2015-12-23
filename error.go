@@ -1,13 +1,15 @@
 package xmlsec
 
 import (
-	"C"
 	"fmt"
 	"runtime"
 	"strings"
 
 	"github.com/crewjam/errset"
 )
+
+// void captureXmlErrors();
+import "C"
 
 var globalErrors = map[uintptr]errset.ErrSet{}
 
@@ -61,13 +63,14 @@ func onXmlError(msg *C.char) {
 func startProcessingXML() {
 	runtime.LockOSThread()
 	globalErrors[getThreadID()] = errset.ErrSet{}
+	C.captureXmlErrors()
 }
 
 // stopProcessingXML unlocks the goroutine-thread lock and deletes the current
 // error stack.
 func stopProcessingXML() {
-	runtime.UnlockOSThread()
 	delete(globalErrors, getThreadID())
+	runtime.UnlockOSThread()
 }
 
 // popError returns the global error for the current thread and resets it to
