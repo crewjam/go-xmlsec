@@ -1,9 +1,6 @@
 package xmlsec
 
-import (
-	"errors"
-	"unsafe"
-)
+import "unsafe"
 
 // Note: on mac you need:
 //   brew install libxmlsec1 libxml2
@@ -30,7 +27,7 @@ import "C"
 // }
 import "C"
 
-// void onError_cgo(char *file, int line, char *funcName, char *errorObject, char *errorSubject, int reason, char *msg);
+// void captureXmlErrors();
 import "C"
 
 func init() {
@@ -46,26 +43,26 @@ func init() {
 		panic("xmlsec crypto initialization failed.")
 	}
 
-	C.xmlSecErrorsSetCallback((C.xmlSecErrorsCallback)(unsafe.Pointer(C.onError_cgo)))
+	C.captureXmlErrors()
 }
 
 func newDoc(buf []byte, idattrs []XMLIDOption) (*C.xmlDoc, error) {
 	ctx := C.xmlCreateMemoryParserCtxt((*C.char)(unsafe.Pointer(&buf[0])),
 		C.int(len(buf)))
 	if ctx == nil {
-		return nil, errors.New("error creating parser")
+		return nil, mustPopError()
 	}
 	defer C.xmlFreeParserCtxt(ctx)
 
 	C.xmlParseDocument(ctx)
 
 	if ctx.wellFormed == C.int(0) {
-		return nil, errors.New("malformed XML")
+		return nil, mustPopError()
 	}
 
 	doc := ctx.myDoc
 	if doc == nil {
-		return nil, errors.New("parse failed")
+		return nil, mustPopError()
 	}
 
 	for _, idattr := range idattrs {

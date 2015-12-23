@@ -139,7 +139,7 @@ func (testSuite *DecryptTest) TestInvalid(c *C) {
 	c.Assert(err, IsNil)
 
 	_, err = Decrypt(testSuite.Key, []byte("<invalid xml"))
-	c.Assert(err, ErrorMatches, "malformed XML")
+	c.Assert(err, ErrorMatches, ".*Couldn't find end of Start Tag.*")
 
 	_, err = Decrypt(testSuite.Key, []byte("<invalid></invalid>"))
 	c.Assert(err, ErrorMatches, "xmlSecFindNode cannot find EncryptedData node")
@@ -149,7 +149,7 @@ func (testSuite *DecryptTest) TestInvalid(c *C) {
 
 	docStr = []byte(`<?xml version="1.0" encoding="UTF-8"?><saml2p:Response xmlns:saml2p="urn:oasis:names:tc:SAML:2.0:protocol" Destination="https://15661444.ngrok.io/saml2/acs" ID="_59c2431b4916af2018984213940ee675" InResponseTo="id-3d21faf29a101222d740735fa512f161" IssueInstant="2015-11-29T21:29:09.991Z" Version="2.0"><saml2:Issuer xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion" Format="urn:oasis:names:tc:SAML:2.0:nameid-format:entity">https://idp.testshib.org/idp/shibboleth</saml2:Issuer><saml2p:Status><saml2p:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success"/></saml2p:Status><saml2:EncryptedAssertion xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion"><xenc:EncryptedData xmlns:xenc="http://www.w3.org/2001/04/xmlenc#" Id="_62d64ca491a287a346272669fbe93191" Type="http://www.w3.org/2001/04/xmlenc#Element">invalid<`)
 	_, err = Decrypt(testSuite.Key, docStr)
-	c.Assert(err, ErrorMatches, "malformed XML")
+	c.Assert(err, ErrorMatches, ".*Premature end of data in tag.*")
 
 	docStr = []byte(`<?xml version="1.0" encoding="UTF-8"?>
 <X>

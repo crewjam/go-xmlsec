@@ -4,6 +4,7 @@ import (
 	"C"
 	"fmt"
 	"runtime"
+	"strings"
 
 	"github.com/crewjam/errset"
 )
@@ -32,8 +33,8 @@ func (e libraryError) Error() string {
 		e.Message)
 }
 
-//export onError
-func onError(file *C.char, line C.int, funcName *C.char, errorObject *C.char, errorSubject *C.char, reason C.int, msg *C.char) {
+//export onXmlsecError
+func onXmlsecError(file *C.char, line C.int, funcName *C.char, errorObject *C.char, errorSubject *C.char, reason C.int, msg *C.char) {
 	err := libraryError{
 		FuncName: C.GoString(funcName),
 		FileName: C.GoString(file),
@@ -44,6 +45,13 @@ func onError(file *C.char, line C.int, funcName *C.char, errorObject *C.char, er
 		Message:  C.GoString(msg)}
 	threadID := getThreadID()
 	globalErrors[threadID] = append(globalErrors[threadID], err)
+}
+
+//export onXmlError
+func onXmlError(msg *C.char) {
+	threadID := getThreadID()
+	globalErrors[threadID] = append(globalErrors[threadID],
+		fmt.Errorf("%s", strings.TrimSuffix(C.GoString(msg), "\n")))
 }
 
 // startProcessingXML is called whenever we enter a function exported by this package.

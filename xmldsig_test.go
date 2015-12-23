@@ -218,7 +218,7 @@ func (testSuite *XMLDSigTest) TestVerifyFailsWhenMessageModified(c *C) {
 
 func (testSuite *XMLDSigTest) TestInvalidXML(c *C) {
 	_, err := Sign(testSuite.Key, []byte("<invalid xml"), SignatureOptions{})
-	c.Assert(err, ErrorMatches, "malformed XML")
+	c.Assert(err, ErrorMatches, ".*Couldn't find end of Start Tag.*")
 
 	_, err = Sign(testSuite.Key, []byte("<invalid></invalid>"), SignatureOptions{})
 	c.Assert(err, ErrorMatches, "cannot find start node")
@@ -227,7 +227,7 @@ func (testSuite *XMLDSigTest) TestInvalidXML(c *C) {
 	c.Assert(err, ErrorMatches, "failed to load pem key")
 
 	err = Verify(testSuite.Cert, []byte("<invalid xml"), SignatureOptions{})
-	c.Assert(err, ErrorMatches, "malformed XML")
+	c.Assert(err, ErrorMatches, ".*Couldn't find end of Start Tag.*")
 
 	err = Verify(testSuite.Cert, []byte("<invalid></invalid>"), SignatureOptions{})
 	c.Assert(err, ErrorMatches, "cannot find start node")
