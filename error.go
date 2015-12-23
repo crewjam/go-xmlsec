@@ -10,7 +10,7 @@ import (
 
 var globalErrors = map[uintptr]errset.ErrSet{}
 
-type Error struct {
+type libraryError struct {
 	FileName string
 	Line     int
 	FuncName string
@@ -20,7 +20,7 @@ type Error struct {
 	Message  string
 }
 
-func (e Error) Error() string {
+func (e libraryError) Error() string {
 	return fmt.Sprintf(
 		"func=%s:file=%s:line=%d:obj=%s:subj=%s:error=%d:%s",
 		e.FuncName,
@@ -34,7 +34,7 @@ func (e Error) Error() string {
 
 //export onError
 func onError(file *C.char, line C.int, funcName *C.char, errorObject *C.char, errorSubject *C.char, reason C.int, msg *C.char) {
-	err := Error{
+	err := libraryError{
 		FuncName: C.GoString(funcName),
 		FileName: C.GoString(file),
 		Line:     int(line),
@@ -42,7 +42,7 @@ func onError(file *C.char, line C.int, funcName *C.char, errorObject *C.char, er
 		Subject:  C.GoString(errorSubject),
 		Reason:   int(reason),
 		Message:  C.GoString(msg)}
-	threadID := getThreadId()
+	threadID := getThreadID()
 	globalErrors[threadID] = append(globalErrors[threadID], err)
 }
 
@@ -51,21 +51,31 @@ func onError(file *C.char, line C.int, funcName *C.char, errorObject *C.char, er
 // error object.
 func startProcessingXML() {
 	runtime.LockOSThread()
-	globalErrors[getThreadId()] = errset.ErrSet{}
+	globalErrors[getThreadID()] = errset.ErrSet{}
 }
 
 // stopProcessingXML unlocks the goroutine-thread lock and deletes the current
 // error stack.
 func stopProcessingXML() {
 	runtime.UnlockOSThread()
-	delete(globalErrors, getThreadId())
+	delete(globalErrors, getThreadID())
 }
 
 // popError returns the global error for the current thread and resets it to
 // an empty error. Returns nil if no errors have occurred.
 func popError() error {
-	threadID := getThreadId()
+	threadID := getThreadID()
 	rv := globalErrors[threadID].ReturnValue()
 	globalErrors[threadID] = errset.ErrSet{}
 	return rv
+}
+
+// mustPopError is like popError except that if there is no error on the stack
+// it returns a generic error.
+func mustPopError() error {
+	err := popError()
+	if err == nil {
+		err = fmt.Errorf("libxmlsec: call failed")
+	}
+	return err
 }

@@ -57,7 +57,6 @@ func newDoc(buf []byte) (*C.xmlDoc, error) {
 	}
 	defer C.xmlFreeParserCtxt(ctx)
 
-	//C.xmlCtxtUseOptions(ctx, C.int(p.Options))
 	C.xmlParseDocument(ctx)
 
 	if ctx.wellFormed == C.int(0) {
@@ -72,7 +71,7 @@ func newDoc(buf []byte) (*C.xmlDoc, error) {
 	return doc, nil
 }
 
-func newDoc2(buf []byte, opts DsigOptions) (*C.xmlDoc, error) {
+func newDoc2(buf []byte, opts SignatureOptions) (*C.xmlDoc, error) {
 	ctx := C.xmlCreateMemoryParserCtxt((*C.char)(unsafe.Pointer(&buf[0])),
 		C.int(len(buf)))
 	if ctx == nil {
@@ -80,7 +79,6 @@ func newDoc2(buf []byte, opts DsigOptions) (*C.xmlDoc, error) {
 	}
 	defer C.xmlFreeParserCtxt(ctx)
 
-	//C.xmlCtxtUseDsigOptions(ctx, C.int(p.DsigOptions))
 	C.xmlParseDocument(ctx)
 
 	if ctx.wellFormed == C.int(0) {
@@ -146,6 +144,6 @@ func dumpDoc(doc *C.xmlDoc) []byte {
 	return []byte(rv)
 }
 
-func constXmlChar(s string) *C.xmlChar {
+func constXMLChar(s string) *C.xmlChar {
 	return (*C.xmlChar)(unsafe.Pointer(C.CString(s)))
 }

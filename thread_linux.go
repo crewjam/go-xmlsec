@@ -2,6 +2,6 @@ package xmlsec
 
 import "syscall"
 
-func getThreadId() uintptr {
+func getThreadID() uintptr {
 	return uintptr(syscall.Gettid())
 }

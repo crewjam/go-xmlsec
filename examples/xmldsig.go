@@ -33,7 +33,7 @@ func main() {
 	buf, err := ioutil.ReadAll(os.Stdin)
 
 	if *doSign {
-		signedBuf, err := xmlsec.Sign(key, buf, xmlsec.DsigOptions{})
+		signedBuf, err := xmlsec.Sign(key, buf, xmlsec.SignatureOptions{})
 		if err != nil {
 			fmt.Printf("%s\n", err)
 			os.Exit(1)
@@ -42,7 +42,7 @@ func main() {
 	}
 
 	if *doVerify {
-		err := xmlsec.Verify(key, buf, xmlsec.DsigOptions{})
+		err := xmlsec.Verify(key, buf, xmlsec.SignatureOptions{})
 		if err == xmlsec.ErrVerificationFailed {
 			fmt.Println("signature is not correct")
 			os.Exit(1)

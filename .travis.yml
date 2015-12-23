@@ -8,3 +8,8 @@ addons:
 
 go:
   - 1.5
+
+script:
+ - golint *.go
+ - go vet ./...
+ - go test -v ./...

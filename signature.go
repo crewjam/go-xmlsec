@@ -37,11 +37,12 @@ type Signature struct {
 	X509Certificate        *SignatureX509Data `xml:"KeyInfo>X509Data,omitempty"`
 }
 
+// SignatureX509Data represents the <X509Data> element of <Signature>
 type SignatureX509Data struct {
 	X509Certificate string `xml:"X509Certificate,omitempty"`
 }
 
-// DefaultSignature populates a default Signature that uses c14n and SHA1.
+// DefaultSignature returns a Signature struct that uses the default c14n and SHA1 settings.
 func DefaultSignature(pemEncodedPublicKey []byte) Signature {
 	// xmlsec wants the key to be base64-encoded but *not* wrapped with the
 	// PEM flags

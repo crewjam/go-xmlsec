@@ -82,10 +82,10 @@ cvCsEFiJZ4AbF+DgmO6TarJ8O05t8zvnOwJlNCASPZRH/JmF8tX0hoHuAQ==</ds:X509Certificate
 }
 
 func (testSuite *EncryptTest) TestEncrypt(c *C) {
-	encryptedString, err := XmlEncrypt(testSuite.Cert, testSuite.Plaintext, Options{})
+	encryptedString, err := Encrypt(testSuite.Cert, testSuite.Plaintext, EncryptOptions{})
 	c.Assert(err, IsNil)
 
-	actualPlaintext, err := DecryptXML(testSuite.Key, encryptedString)
+	actualPlaintext, err := Decrypt(testSuite.Key, encryptedString)
 	c.Assert(err, IsNil)
 
 	plaintextDoc, _ := newDoc(testSuite.Plaintext)

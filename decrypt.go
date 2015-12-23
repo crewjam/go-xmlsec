@@ -19,7 +19,9 @@ import "C"
 // #include <libxml/xmlmemory.h>
 import "C"
 
-func DecryptXML(privateKey []byte, doc []byte) ([]byte, error) {
+// Decrypt finds the first encrypted part of doc, decrypts it using
+// privateKey and returns the plaintext of the embedded document.
+func Decrypt(privateKey []byte, doc []byte) ([]byte, error) {
 	startProcessingXML()
 	defer stopProcessingXML()
 

@@ -2,7 +2,6 @@ package xmlsec
 
 import (
 	"errors"
-	"fmt"
 	"unsafe"
 )
 
@@ -15,9 +14,9 @@ import (
 // #include <xmlsec/crypto.h>
 import "C"
 
-// DsigOptions represents additional, less commonly used, options for Sign and
+// SignatureOptions represents additional, less commonly used, options for Sign and
 // Verify
-type DsigOptions struct {
+type SignatureOptions struct {
 	// Specify the name of ID attributes for specific elements. This
 	// may be required if the signed document contains Reference elements
 	// that define which parts of the document are to be signed.
@@ -28,18 +27,19 @@ type DsigOptions struct {
 	XMLID []XMLIDOption
 }
 
+// XMLIDOption represents the definition of an XML reference element
+// (See http://www.w3.org/TR/xml-id/)
 type XMLIDOption struct {
 	ElementName      string
 	ElementNamespace string
 	AttributeName    string
 }
 
-// Sign returns a version of docStr signed with key according to
-// the XML-DSIG standard. docStr is a template document meaning
-// that it contains a `Signature` element in the
-// http://www.w3.org/2000/09/xmldsig# namespace.
-func Sign(key []byte, doc []byte, opts DsigOptions) ([]byte, error) {
-
+// Sign returns a version of doc signed with key according to
+// the XML-DSIG standard. doc is a template document meaning
+// that it contains an `http://www.w3.org/2000/09/xmldsig#Signature`
+// element whose properties define how and what to sign.
+func Sign(key []byte, doc []byte, opts SignatureOptions) ([]byte, error) {
 	startProcessingXML()
 	defer stopProcessingXML()
 
@@ -88,22 +88,22 @@ const (
 	xmlSecDSigStatusInvalid   = 2
 )
 
-// Verify checks that the signature in docStr is valid according
+// Verify checks that the signature in doc is valid according
 // to the XML-DSIG specification. publicKey is the public part of
-// the key used to sign docStr. If the signature is not correct,
+// the key used to sign doc. If the signature is not correct,
 // this function returns ErrVerificationFailed.
-func Verify(publicKey []byte, doc []byte, opts DsigOptions) error {
+func Verify(publicKey []byte, doc []byte, opts SignatureOptions) error {
 	startProcessingXML()
 	defer stopProcessingXML()
 
 	keysMngr := C.xmlSecKeysMngrCreate()
 	if keysMngr == nil {
-		return fmt.Errorf("xmlSecKeysMngrCreate failed")
+		return mustPopError()
 	}
 	defer C.xmlSecKeysMngrDestroy(keysMngr)
 
 	if rv := C.xmlSecCryptoAppDefaultKeysMngrInit(keysMngr); rv < 0 {
-		return fmt.Errorf("xmlSecCryptoAppDefaultKeysMngrInit failed")
+		return mustPopError()
 	}
 
 	key := C.xmlSecCryptoAppKeyLoadMemory(
@@ -112,7 +112,7 @@ func Verify(publicKey []byte, doc []byte, opts DsigOptions) error {
 		C.xmlSecKeyDataFormatCertPem,
 		nil, nil, nil)
 	if key == nil {
-		return fmt.Errorf("xmlSecCryptoAppKeyLoadMemory failed")
+		return mustPopError()
 	}
 
 	if rv := C.xmlSecCryptoAppKeyCertLoadMemory(key,
@@ -120,16 +120,16 @@ func Verify(publicKey []byte, doc []byte, opts DsigOptions) error {
 		C.xmlSecSize(len(publicKey)),
 		C.xmlSecKeyDataFormatCertPem); rv < 0 {
 		C.xmlSecKeyDestroy(key)
-		return fmt.Errorf("xmlSecCryptoAppKeyCertLoad failed")
+		return mustPopError()
 	}
 
 	if rv := C.xmlSecCryptoAppDefaultKeysMngrAdoptKey(keysMngr, key); rv < 0 {
-		return fmt.Errorf("xmlSecCryptoAppDefaultKeysMngrAdoptKey failed")
+		return mustPopError()
 	}
 
 	dsigCtx := C.xmlSecDSigCtxCreate(keysMngr)
 	if dsigCtx == nil {
-		return fmt.Errorf("xmlSecDSigCtxCreate failed")
+		return mustPopError()
 	}
 	defer C.xmlSecDSigCtxDestroy(dsigCtx)
 
