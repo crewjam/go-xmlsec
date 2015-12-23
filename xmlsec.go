@@ -49,7 +49,7 @@ func init() {
 	C.xmlSecErrorsSetCallback((C.xmlSecErrorsCallback)(unsafe.Pointer(C.onError_cgo)))
 }
 
-func newDoc(buf []byte) (*C.xmlDoc, error) {
+func newDoc(buf []byte, idattrs []XMLIDOption) (*C.xmlDoc, error) {
 	ctx := C.xmlCreateMemoryParserCtxt((*C.char)(unsafe.Pointer(&buf[0])),
 		C.int(len(buf)))
 	if ctx == nil {
@@ -68,29 +68,7 @@ func newDoc(buf []byte) (*C.xmlDoc, error) {
 		return nil, errors.New("parse failed")
 	}
 
-	return doc, nil
-}
-
-func newDoc2(buf []byte, opts SignatureOptions) (*C.xmlDoc, error) {
-	ctx := C.xmlCreateMemoryParserCtxt((*C.char)(unsafe.Pointer(&buf[0])),
-		C.int(len(buf)))
-	if ctx == nil {
-		return nil, errors.New("error creating parser")
-	}
-	defer C.xmlFreeParserCtxt(ctx)
-
-	C.xmlParseDocument(ctx)
-
-	if ctx.wellFormed == C.int(0) {
-		return nil, errors.New("malformed XML")
-	}
-
-	doc := ctx.myDoc
-	if doc == nil {
-		return nil, errors.New("parse failed")
-	}
-
-	for _, idattr := range opts.XMLID {
+	for _, idattr := range idattrs {
 		addIDAttr(C.xmlDocGetRootElement(doc),
 			idattr.AttributeName, idattr.ElementName, idattr.ElementNamespace)
 	}

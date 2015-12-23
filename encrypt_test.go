@@ -88,7 +88,7 @@ func (testSuite *EncryptTest) TestEncrypt(c *C) {
 	actualPlaintext, err := Decrypt(testSuite.Key, encryptedString)
 	c.Assert(err, IsNil)
 
-	plaintextDoc, _ := newDoc(testSuite.Plaintext)
+	plaintextDoc, _ := newDoc(testSuite.Plaintext, nil)
 	expectedPlaintext := dumpDoc(plaintextDoc)
 
 	// Big blobs of XML are hard to debug. They are easier to handle when

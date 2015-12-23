@@ -139,7 +139,7 @@ func Encrypt(publicKey, doc []byte, opts EncryptOptions) ([]byte, error) {
 		return nil, mustPopError()
 	}
 
-	parsedDoc, err := newDoc(doc)
+	parsedDoc, err := newDoc(doc, nil)
 	if err != nil {
 		return nil, err
 	}

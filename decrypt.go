@@ -48,7 +48,7 @@ func Decrypt(privateKey []byte, doc []byte) ([]byte, error) {
 		return nil, popError()
 	}
 
-	parsedDoc, err := newDoc(doc)
+	parsedDoc, err := newDoc(doc, nil)
 	if err != nil {
 		return nil, err
 	}

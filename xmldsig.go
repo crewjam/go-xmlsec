@@ -58,7 +58,7 @@ func Sign(key []byte, doc []byte, opts SignatureOptions) ([]byte, error) {
 		return nil, errors.New("failed to load pem key")
 	}
 
-	parsedDoc, err := newDoc2(doc, opts)
+	parsedDoc, err := newDoc(doc, opts.XMLID)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +134,7 @@ func Verify(publicKey []byte, doc []byte, opts SignatureOptions) error {
 	}
 	defer C.xmlSecDSigCtxDestroy(dsigCtx)
 
-	parsedDoc, err := newDoc2(doc, opts)
+	parsedDoc, err := newDoc(doc, opts.XMLID)
 	if err != nil {
 		return err
 	}
