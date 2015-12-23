@@ -1,15 +1,12 @@
 package xmlsec
 
 import (
+	"C"
 	"fmt"
 	"runtime"
-	"unsafe"
 
 	"github.com/crewjam/errset"
 )
-
-// #include <pthread.h>
-import "C"
 
 var globalErrors = map[uintptr]errset.ErrSet{}
 
@@ -45,7 +42,7 @@ func onError(file *C.char, line C.int, funcName *C.char, errorObject *C.char, er
 		Subject:  C.GoString(errorSubject),
 		Reason:   int(reason),
 		Message:  C.GoString(msg)}
-	threadID := uintptr(unsafe.Pointer(C.pthread_self()))
+	threadID := getThreadId()
 	globalErrors[threadID] = append(globalErrors[threadID], err)
 }
 
@@ -54,22 +51,20 @@ func onError(file *C.char, line C.int, funcName *C.char, errorObject *C.char, er
 // error object.
 func startProcessingXML() {
 	runtime.LockOSThread()
-	threadID := uintptr(unsafe.Pointer(C.pthread_self()))
-	globalErrors[threadID] = errset.ErrSet{}
+	globalErrors[getThreadId()] = errset.ErrSet{}
 }
 
 // stopProcessingXML unlocks the goroutine-thread lock and deletes the current
 // error stack.
 func stopProcessingXML() {
 	runtime.UnlockOSThread()
-	threadID := uintptr(unsafe.Pointer(C.pthread_self()))
-	delete(globalErrors, threadID)
+	delete(globalErrors, getThreadId())
 }
 
 // popError returns the global error for the current thread and resets it to
 // an empty error. Returns nil if no errors have occurred.
 func popError() error {
-	threadID := uintptr(unsafe.Pointer(C.pthread_self()))
+	threadID := getThreadId()
 	rv := globalErrors[threadID].ReturnValue()
 	globalErrors[threadID] = errset.ErrSet{}
 	return rv
