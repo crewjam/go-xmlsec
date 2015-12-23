@@ -48,7 +48,8 @@ func onError(file *C.char, line C.int, funcName *C.char, errorObject *C.char, er
 
 // startProcessingXML is called whenever we enter a function exported by this package.
 // It locks the current goroutine to the current thread and establishes a thread-local
-// error object.
+// error object. If the library later calls onError then the error will be appended
+// to the error object associated with the current thread.
 func startProcessingXML() {
 	runtime.LockOSThread()
 	globalErrors[getThreadID()] = errset.ErrSet{}
@@ -62,7 +63,9 @@ func stopProcessingXML() {
 }
 
 // popError returns the global error for the current thread and resets it to
-// an empty error. Returns nil if no errors have occurred.
+// an empty error. Returns nil if no errors have occurred. This function must be
+// called after startProcessingXML() and before stopProcessingXML(). All three
+// functions must be called on the same goroutine.
 func popError() error {
 	threadID := getThreadID()
 	rv := globalErrors[threadID].ReturnValue()

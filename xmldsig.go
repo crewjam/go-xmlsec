@@ -36,7 +36,7 @@ type XMLIDOption struct {
 }
 
 // Sign returns a version of doc signed with key according to
-// the XML-DSIG standard. doc is a template document meaning
+// the XMLDSIG standard. doc is a template document meaning
 // that it contains an `http://www.w3.org/2000/09/xmldsig#Signature`
 // element whose properties define how and what to sign.
 func Sign(key []byte, doc []byte, opts SignatureOptions) ([]byte, error) {
@@ -82,6 +82,7 @@ func Sign(key []byte, doc []byte, opts SignatureOptions) ([]byte, error) {
 // ErrVerificationFailed is returned from Verify when the signature is incorrect
 var ErrVerificationFailed = errors.New("signature verification failed")
 
+// values returned from xmlSecDSigCtxVerify
 const (
 	xmlSecDSigStatusUnknown   = 0
 	xmlSecDSigStatusSucceeded = 1
@@ -89,7 +90,7 @@ const (
 )
 
 // Verify checks that the signature in doc is valid according
-// to the XML-DSIG specification. publicKey is the public part of
+// to the XMLDSIG specification. publicKey is the public part of
 // the key used to sign doc. If the signature is not correct,
 // this function returns ErrVerificationFailed.
 func Verify(publicKey []byte, doc []byte, opts SignatureOptions) error {
