@@ -106,7 +106,6 @@ Geka8nz8JjwxpUjAiSWYKLtJhGEaTqCYxCCX2Dw+dOTqUzHOZ7WKv4JXPK5G/Uhr
 
 	c.Assert(Cert, Not(IsNil))
 
-	/* XXX
 	err = Verify(Cert, actualPlaintextString, DsigOptions{
 		XMLID: []XMLIDOption{{
 			ElementName:      "Assertion",
@@ -114,7 +113,6 @@ Geka8nz8JjwxpUjAiSWYKLtJhGEaTqCYxCCX2Dw+dOTqUzHOZ7WKv4JXPK5G/Uhr
 			AttributeName:    "ID",
 		}}})
 	c.Assert(err, IsNil)
-	*/
 }
 
 func (testSuite *DecryptTest) TestDecryptWithPadding(c *C) {

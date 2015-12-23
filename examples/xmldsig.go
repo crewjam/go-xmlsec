@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/crewjam/go-xmlsec/xmldsig"
+	"github.com/crewjam/go-xmlsec"
 )
 
 func main() {
@@ -33,7 +33,7 @@ func main() {
 	buf, err := ioutil.ReadAll(os.Stdin)
 
 	if *doSign {
-		signedBuf, err := xmldsig.Sign(key, buf, xmldsig.Options{})
+		signedBuf, err := xmlsec.Sign(key, buf, xmlsec.DsigOptions{})
 		if err != nil {
 			fmt.Printf("%s\n", err)
 			os.Exit(1)
@@ -42,8 +42,8 @@ func main() {
 	}
 
 	if *doVerify {
-		err := xmldsig.Verify(key, buf, xmldsig.Options{})
-		if err == xmldsig.ErrVerificationFailed {
+		err := xmlsec.Verify(key, buf, xmlsec.DsigOptions{})
+		if err == xmlsec.ErrVerificationFailed {
 			fmt.Println("signature is not correct")
 			os.Exit(1)
 		}

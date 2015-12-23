@@ -48,7 +48,7 @@ func DecryptXML(privateKey []byte, doc []byte) ([]byte, error) {
 
 	parsedDoc, err := newDoc(doc)
 	if err != nil {
-		return nil, fmt.Errorf("malformed XML")
+		return nil, err
 	}
 	defer closeDoc(parsedDoc)
 

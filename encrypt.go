@@ -1,122 +1,29 @@
 package xmlsec
 
-// Note: on mac you need: brew install libxmlsec1 libxml2
-
 // #cgo pkg-config: xmlsec1
 // #include <xmlsec/xmlsec.h>
 // #include <xmlsec/xmltree.h>
 // #include <xmlsec/xmlenc.h>
-// #include <xmlsec/errors.h>
 // #include <xmlsec/templates.h>
 // #include <xmlsec/crypto.h>
 //
-// static inline xmlSecKeyDataId MY_xmlSecKeyDataAesId(void) {
-//   return xmlSecKeyDataAesId;
-// }
+// // Note: the xmlSecKeyData*Id itentifiers are macros, so we need to wrap them
+// // here to make them callable from go.
+// static inline xmlSecKeyDataId MY_xmlSecKeyDataAesId(void) { return xmlSecKeyDataAesId; }
+// static inline xmlSecKeyDataId MY_xmlSecKeyDataDesId(void) { return xmlSecKeyDataDesId; }
+// static inline xmlSecTransformId MY_xmlSecTransformAes128CbcId(void) { return xmlSecTransformAes128CbcId; }
+// static inline xmlSecTransformId MY_xmlSecTransformAes192CbcId(void) { return xmlSecTransformAes192CbcId; }
+// static inline xmlSecTransformId MY_xmlSecTransformAes256CbcId(void) { return xmlSecTransformAes256CbcId; }
+// static inline xmlSecTransformId MY_xmlSecTransformDes3CbcId(void) { return xmlSecTransformDes3CbcId; }
+// static inline xmlSecTransformId MY_xmlSecTransformRsaOaepId(void) { return xmlSecTransformRsaOaepId; }
+// static inline xmlSecTransformId MY_xmlSecTransformRsaPkcs1Id(void) { return xmlSecTransformRsaPkcs1Id; }
 //
-// static inline xmlSecTransformId MY_xmlSecTransformAes128CbcId(void) {
-//   return xmlSecTransformAes128CbcId;
-// }
-//
-// static inline xmlSecTransformId MY_xmlSecTransformRsaOaepId(void) {
-//   return xmlSecTransformRsaOaepId;
-// }
-//
-// static inline xmlSecKeyDataId MY_xmlSecKeyDataDesId(void) {
-//    return xmlSecKeyDataDesId;
-// }
-// static inline xmlSecTransformId MY_xmlSecTransformAes192CbcId(void) {
-//    return xmlSecTransformAes192CbcId;
-// }
-// static inline xmlSecTransformId MY_xmlSecTransformAes256CbcId(void) {
-//    return xmlSecTransformAes256CbcId;
-// }
-// static inline xmlSecTransformId MY_xmlSecTransformDes3CbcId(void) {
-//    return xmlSecTransformDes3CbcId;
-// }
-// static inline xmlSecTransformId MY_xmlSecTransformRsaPkcs1Id(void) {
-//    return xmlSecTransformRsaPkcs1Id;
-// }
-//
-import "C"
-
-// #cgo pkg-config: libxml-2.0
-// #include <libxml/parser.h>
-// #include <libxml/parserInternals.h>
-// #include <libxml/xmlmemory.h>
-// // Macro wrapper function
-// static inline void MY_xmlFree(void *p) {
-//   xmlFree(p);
-// }
 import "C"
 
 import (
-	"errors"
 	"fmt"
 	"unsafe"
 )
-
-// void onError_cgo(char *file, int line, char *funcName, char *errorObject, char *errorSubject, int reason, char *msg);
-import "C"
-
-func init() {
-	C.xmlInitParser()
-
-	if rv := C.xmlSecInit(); rv < 0 {
-		panic("xmlsec failed to initialize")
-	}
-	if rv := C.xmlSecCryptoAppInit(nil); rv < 0 {
-		panic("xmlsec crypto initialization failed.")
-	}
-	if rv := C.xmlSecCryptoInit(); rv < 0 {
-		panic("xmlsec crypto initialization failed.")
-	}
-
-	C.xmlSecErrorsSetCallback((C.xmlSecErrorsCallback)(unsafe.Pointer(C.onError_cgo)))
-}
-
-func newDoc(buf []byte) (*C.xmlDoc, error) {
-	ctx := C.xmlCreateMemoryParserCtxt((*C.char)(unsafe.Pointer(&buf[0])),
-		C.int(len(buf)))
-	if ctx == nil {
-		return nil, errors.New("error creating parser")
-	}
-	defer C.xmlFreeParserCtxt(ctx)
-
-	//C.xmlCtxtUseOptions(ctx, C.int(p.Options))
-	C.xmlParseDocument(ctx)
-
-	if ctx.wellFormed == C.int(0) {
-		return nil, errors.New("malformed XML")
-	}
-
-	doc := ctx.myDoc
-	if doc == nil {
-		return nil, errors.New("parse failed")
-	}
-
-	return doc, nil
-}
-
-func closeDoc(doc *C.xmlDoc) {
-	C.xmlFreeDoc(doc)
-}
-
-func dumpDoc(doc *C.xmlDoc) []byte {
-	var buffer *C.xmlChar
-	var bufferSize C.int
-	C.xmlDocDumpMemory(doc, &buffer, &bufferSize)
-	rv := C.GoStringN((*C.char)(unsafe.Pointer(buffer)), bufferSize)
-	C.MY_xmlFree(unsafe.Pointer(buffer))
-
-	// TODO(ross): this is totally nasty un-idiomatic, but I'm
-	// tired of googling how to copy a []byte from a char*
-	return []byte(rv)
-}
-
-func constXmlChar(s string) *C.xmlChar {
-	return (*C.xmlChar)(unsafe.Pointer(C.CString(s)))
-}
 
 const (
 	DefaultAlgorithm = iota
