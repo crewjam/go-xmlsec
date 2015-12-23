@@ -114,14 +114,7 @@ func dumpDoc(doc *C.xmlDoc) []byte {
 	var buffer *C.xmlChar
 	var bufferSize C.int
 	C.xmlDocDumpMemory(doc, &buffer, &bufferSize)
-	rv := C.GoStringN((*C.char)(unsafe.Pointer(buffer)), bufferSize)
-	C.MY_xmlFree(unsafe.Pointer(buffer))
+	defer C.MY_xmlFree(unsafe.Pointer(buffer))
 
-	// TODO(ross): this is totally nasty un-idiomatic, but I'm
-	// tired of googling how to copy a []byte from a char*
-	return []byte(rv)
-}
-
-func constXMLChar(s string) *C.xmlChar {
-	return (*C.xmlChar)(unsafe.Pointer(C.CString(s)))
+	return C.GoBytes(unsafe.Pointer(buffer), bufferSize)
 }
