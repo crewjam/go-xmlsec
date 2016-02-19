@@ -9,6 +9,7 @@ addons:
 
 go:
   - 1.5
+  - 1.6
 
 install:
  - go get -t ./...
