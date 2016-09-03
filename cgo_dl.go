@@ -1,6 +1,6 @@
-package xmlsec
-
 // +build !static
+
+package xmlsec
 
 // #cgo linux CFLAGS: -w
 // #cgo darwin CFLAGS: -Wno-invalid-pp-token -Wno-header-guard

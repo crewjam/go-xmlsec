@@ -1,6 +1,6 @@
-package xmlsec
-
 // +build static
+
+package xmlsec
 
 // #cgo linux CFLAGS: -w
 // #cgo darwin CFLAGS: -Wno-invalid-pp-token -Wno-header-guard
@@ -16,9 +16,4 @@ import "C"
 // #include <libxml/parser.h>
 // #include <libxml/parserInternals.h>
 // #include <libxml/xmlmemory.h>
-// #include <xmlsec/xmlsec.h>
-// #include <xmlsec/xmltree.h>
-// #include <xmlsec/xmlenc.h>
-// #include <xmlsec/templates.h>
-// #include <xmlsec/crypto.h>
 import "C"
