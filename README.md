@@ -47,7 +47,7 @@ This package uses cgo to wrap libxmlsec. As such, you'll need libxmlsec headers 
 
 On Mac with homebrew, this might look like:
 
-    $ brew install libxmlsec1 libxml2
+    $ brew install libxmlsec1 libxml2 pkg-config
     $ go get github.com/crewjam/go-xmlsec
 
 
