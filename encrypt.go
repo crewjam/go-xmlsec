@@ -1,6 +1,5 @@
 package xmlsec
 
-// #cgo pkg-config: xmlsec1
 // #include <xmlsec/xmlsec.h>
 // #include <xmlsec/xmltree.h>
 // #include <xmlsec/xmlenc.h>

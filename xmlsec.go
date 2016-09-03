@@ -6,7 +6,6 @@ import "unsafe"
 //   brew install libxmlsec1 libxml2
 //   brew link libxml2 --force
 
-// #cgo pkg-config: xmlsec1
 // #include <xmlsec/xmlsec.h>
 // #include <xmlsec/xmltree.h>
 // #include <xmlsec/xmlenc.h>
@@ -15,7 +14,6 @@ import "unsafe"
 // #include <xmlsec/crypto.h>
 import "C"
 
-// #cgo pkg-config: libxml-2.0
 // #include <libxml/parser.h>
 // #include <libxml/parserInternals.h>
 // #include <libxml/xmlmemory.h>
