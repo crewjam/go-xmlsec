@@ -5,7 +5,7 @@ import (
 	"unsafe"
 )
 
-// #cgo linux -W
+// #cgo linux CFLAGS: -w
 // #cgo darwin CFLAGS: -Wno-invalid-pp-token -Wno-header-guard
 // #cgo pkg-config: xmlsec1
 // #include <xmlsec/xmlsec.h>
