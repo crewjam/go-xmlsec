@@ -1,4 +1,4 @@
-FROM ubuntu
+FROM ubuntu:16.04
 RUN apt-get update -yy && \
 	apt-get install -yy git make curl pkg-config
 
