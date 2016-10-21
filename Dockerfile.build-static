@@ -54,8 +54,8 @@ RUN curl -sL ftp://xmlsoft.org/libxml2/libxml2-2.9.4.tar.gz | tar -xzf - && \
     make install
 
 RUN \
-  curl -sL ftp://ftp.openssl.org/source/openssl-1.0.2h.tar.gz | tar -xzf - && \
-  cd openssl-1.0.2h && \
+  curl -sL ftp://ftp.openssl.org/source/openssl-1.0.2j.tar.gz | tar -xzf - && \
+  cd openssl-1.0.2j && \
   ./config \
     no-shared \
     no-weak-ssl-ciphers \
