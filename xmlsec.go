@@ -108,3 +108,11 @@ func dumpDoc(doc *C.xmlDoc) []byte {
 
 	return C.GoBytes(unsafe.Pointer(buffer), bufferSize)
 }
+
+func dumpNode(node *C.xmlNode) []byte {
+	buffer := C.xmlBufferCreate()
+	defer C.xmlBufferFree(buffer)
+	bufferSize := C.xmlNodeDump(buffer, nil, node, 0, 0)
+
+	return C.GoBytes(unsafe.Pointer(buffer.content), bufferSize)
+}

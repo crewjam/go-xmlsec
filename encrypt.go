@@ -279,5 +279,8 @@ func Encrypt(publicKey, doc []byte, opts EncryptOptions) ([]byte, error) {
 	}
 	encDataNode = nil // the template is inserted in the doc, so we don't own it
 
-	return dumpDoc(parsedDoc), nil
+	rootNode := C.xmlDocGetRootElement(parsedDoc)
+	buf := dumpNode(rootNode)
+
+	return buf, nil
 }
