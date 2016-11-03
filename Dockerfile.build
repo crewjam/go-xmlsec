@@ -7,8 +7,8 @@ ENV GOPATH=/go
 ENV PATH=$PATH:/usr/local/go/bin:/go/bin
 RUN mkdir -p /go/bin
 
-ADD . /go/src/github.com/crewjam/go-xmlsec
-WORKDIR /go/src/github.com/crewjam/go-xmlsec
+ADD . /go/src/github.com/andy-miracl/go-xmlsec
+WORKDIR /go/src/github.com/andy-miracl/go-xmlsec
 RUN go get github.com/crewjam/errset
 RUN go build -o /bin/xmldsig ./examples/xmldsig.go
 

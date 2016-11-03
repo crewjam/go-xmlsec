@@ -90,8 +90,8 @@ RUN curl -sL http://www.aleksey.com/xmlsec/download/xmlsec1-1.2.22.tar.gz | tar 
 	make -C include install && \
 	make install-pkgconfigDATA
 
-ADD . /go/src/github.com/crewjam/go-xmlsec
-WORKDIR /go/src/github.com/crewjam/go-xmlsec
+ADD . /go/src/github.com/andy-miracl/go-xmlsec
+WORKDIR /go/src/github.com/andy-miracl/go-xmlsec
 RUN go get github.com/crewjam/errset
 RUN go build -tags static -ldflags '-s -extldflags "-static"' -o /bin/xmldsig ./examples/xmldsig.go
 RUN ldd /bin/xmldsig || true

@@ -1,6 +1,6 @@
 # go-xmlsec
 
-[![](https://godoc.org/github.com/crewjam/go-xmlsec?status.png)](http://godoc.org/github.com/crewjam/go-xmlsec) [![Build Status](https://travis-ci.org/crewjam/go-xmlsec.svg?branch=master)](https://travis-ci.org/crewjam/go-xmlsec)
+[![](https://godoc.org/github.com/andy-miracl/go-xmlsec?status.png)](http://godoc.org/github.com/andy-miracl/go-xmlsec) [![Build Status](https://travis-ci.org/crewjam/go-xmlsec.svg?branch=master)](https://travis-ci.org/crewjam/go-xmlsec)
 
 A partial wrapper for [xmlsec](https://www.aleksey.com/xmlsec). 
 
@@ -43,12 +43,12 @@ As seems to be the case for many things in the XMLish world, the xmldsig and xml
 This package uses cgo to wrap libxmlsec. As such, you'll need libxmlsec headers and a C compiler to make it work. On linux, this might look like:
 
     $ apt-get install libxml2-dev libxmlsec1-dev pkg-config
-    $ go get github.com/crewjam/go-xmlsec
+    $ go get github.com/andy-miracl/go-xmlsec
 
 On Mac with homebrew, this might look like:
 
     $ brew install libxmlsec1 libxml2 pkg-config
-    $ go get github.com/crewjam/go-xmlsec
+    $ go get github.com/andy-miracl/go-xmlsec
 
 # Static Linking
 
