@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/andy-miracl/go-xmlsec"
+	"github.com/miracl/go-xmlsec"
 )
 
 func main() {
@@ -31,6 +31,10 @@ func main() {
 	}
 
 	buf, err := ioutil.ReadAll(os.Stdin)
+	if err != nil {
+		fmt.Printf("%s\n", err)
+		os.Exit(1)
+	}
 
 	if *doSign {
 		signedBuf, err := xmlsec.Sign(key, buf, xmlsec.SignatureOptions{})

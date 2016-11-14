@@ -91,6 +91,7 @@ var errInvalidAlgorithm = errors.New("invalid algorithm")
 // Note: the invocations of C.CString() here return a pointer to a string
 // allocated from the C heap that would normally need to freed by calling
 // C.free, but because these are global, we can just leak them.
+// nosec
 var (
 	constDsigNamespace = (*C.xmlChar)(unsafe.Pointer(C.CString("http://www.w3.org/2000/09/xmldsig#")))
 	constDigestMethod  = (*C.xmlChar)(unsafe.Pointer(C.CString("DigestMethod")))
@@ -117,6 +118,7 @@ func Encrypt(publicKey, doc []byte, opts EncryptOptions) ([]byte, error) {
 		return nil, mustPopError()
 	}
 
+	// nosec
 	key := C.xmlSecCryptoAppKeyLoadMemory(
 		(*C.xmlSecByte)(unsafe.Pointer(&publicKey[0])),
 		C.xmlSecSize(len(publicKey)),
@@ -126,6 +128,7 @@ func Encrypt(publicKey, doc []byte, opts EncryptOptions) ([]byte, error) {
 		return nil, mustPopError()
 	}
 
+	// nosec
 	if rv := C.xmlSecCryptoAppKeyCertLoadMemory(key,
 		(*C.xmlSecByte)(unsafe.Pointer(&publicKey[0])),
 		C.xmlSecSize(len(publicKey)),
@@ -162,6 +165,7 @@ func Encrypt(publicKey, doc []byte, opts EncryptOptions) ([]byte, error) {
 
 	// create encryption template to encrypt XML file and replace
 	// its content with encryption result
+	// nosec
 	encDataNode := C.xmlSecTmplEncDataCreate(parsedDoc, sessionCipherTransform,
 		nil, (*C.xmlChar)(unsafe.Pointer(&C.xmlSecTypeEncElement)), nil, nil)
 	if encDataNode == nil {

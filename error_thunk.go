@@ -8,7 +8,7 @@ package xmlsec
 // #include <xmlsec/xmlsec.h>
 // #include <xmlsec/errors.h>
 //
-// void onXmlError(const char *msg);  // implemented in go
+// void onXMLError(const char *msg);  // implemented in go
 // void onXmlsecError(const char *file, int line, const char *funcName, const char *errorObject, const char *errorSubject, int reason, const char *msg);  // implemented in go
 //
 // static void onXmlGenericError_cgo(void *ctx, const char *format, ...) {
@@ -17,7 +17,7 @@ package xmlsec
 // 	va_start(args, format);
 // 	vsnprintf(buffer, 256, format, args);
 // 	va_end (args);
-//  onXmlError(buffer);
+//  onXMLError(buffer);
 // }
 //
 // static void onXmlsecError_cgo(const char *file, int line, const char *funcName, const char *errorObject, const char *errorSubject, int reason, const char *msg) {

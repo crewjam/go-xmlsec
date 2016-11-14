@@ -10,6 +10,8 @@ import (
 type Method struct {
 	Algorithm string `xml:",attr"`
 }
+
+// Reference data struct
 type Reference struct {
 	URI                 string   `xml:"URI,attr"`
 	ReferenceTransforms []Method `xml:"Transforms>Transform"`
@@ -17,6 +19,7 @@ type Reference struct {
 	DigestValue         string   `xml:"DigestValue"`
 }
 
+// SignedInfo struct
 type SignedInfo struct {
 	CanonicalizationMethod Method    `xml:"CanonicalizationMethod"`
 	SignatureMethod        Method    `xml:"SignatureMethod"`
@@ -66,7 +69,7 @@ func DefaultSignature(pemEncodedPublicKey []byte) Signature {
 			},
 			Reference: Reference{
 				ReferenceTransforms: []Method{
-					Method{Algorithm: "http://www.w3.org/2000/09/xmldsig#enveloped-signature"},
+					{Algorithm: "http://www.w3.org/2000/09/xmldsig#enveloped-signature"},
 				},
 				DigestMethod: Method{
 					Algorithm: "http://www.w3.org/2000/09/xmldsig#sha1",

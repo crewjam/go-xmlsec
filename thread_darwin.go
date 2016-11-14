@@ -9,5 +9,6 @@ import "C"
 func getThreadID() uintptr {
 	// Darwin lacks a meaningful version of gettid() so instead we use
 	// ptread_self() as a proxy.
+	// nosec
 	return uintptr(unsafe.Pointer(C.pthread_self()))
 }

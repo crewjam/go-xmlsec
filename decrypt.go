@@ -33,6 +33,7 @@ func Decrypt(privateKey []byte, doc []byte) ([]byte, error) {
 		return nil, popError()
 	}
 
+	// nosec
 	key := C.xmlSecCryptoAppKeyLoadMemory(
 		(*C.xmlSecByte)(unsafe.Pointer(&privateKey[0])),
 		C.xmlSecSize(len(privateKey)),
@@ -59,6 +60,7 @@ func Decrypt(privateKey []byte, doc []byte) ([]byte, error) {
 	}
 	defer C.xmlSecEncCtxDestroy(encCtx)
 
+	// nosec
 	encDataNode := C.xmlSecFindNode(C.xmlDocGetRootElement(parsedDoc),
 		(*C.xmlChar)(unsafe.Pointer(&C.xmlSecNodeEncryptedData)),
 		(*C.xmlChar)(unsafe.Pointer(&C.xmlSecEncNs)))
@@ -70,7 +72,6 @@ func Decrypt(privateKey []byte, doc []byte) ([]byte, error) {
 	if rv := C.xmlSecEncCtxDecrypt(encCtx, encDataNode); rv < 0 {
 		return nil, popError()
 	}
-	encDataNode = nil // the template is inserted in the doc, so we don't own it
 
 	return dumpDoc(parsedDoc), nil
 }

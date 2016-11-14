@@ -48,6 +48,7 @@ func Sign(key []byte, doc []byte, opts SignatureOptions) ([]byte, error) {
 	}
 	defer C.xmlSecDSigCtxDestroy(ctx)
 
+	// nosec
 	ctx.signKey = C.xmlSecCryptoAppKeyLoadMemory(
 		(*C.xmlSecByte)(unsafe.Pointer(&key[0])),
 		C.xmlSecSize(len(key)),
@@ -63,6 +64,7 @@ func Sign(key []byte, doc []byte, opts SignatureOptions) ([]byte, error) {
 	}
 	defer closeDoc(parsedDoc)
 
+	// nosec
 	node := C.xmlSecFindNode(C.xmlDocGetRootElement(parsedDoc),
 		(*C.xmlChar)(unsafe.Pointer(&C.xmlSecNodeSignature)),
 		(*C.xmlChar)(unsafe.Pointer(&C.xmlSecDSigNs)))
@@ -106,6 +108,7 @@ func Verify(publicKey []byte, doc []byte, opts SignatureOptions) error {
 		return mustPopError()
 	}
 
+	// nosec
 	key := C.xmlSecCryptoAppKeyLoadMemory(
 		(*C.xmlSecByte)(unsafe.Pointer(&publicKey[0])),
 		C.xmlSecSize(len(publicKey)),
@@ -115,6 +118,7 @@ func Verify(publicKey []byte, doc []byte, opts SignatureOptions) error {
 		return mustPopError()
 	}
 
+	// nosec
 	if rv := C.xmlSecCryptoAppKeyCertLoadMemory(key,
 		(*C.xmlSecByte)(unsafe.Pointer(&publicKey[0])),
 		C.xmlSecSize(len(publicKey)),
@@ -139,6 +143,7 @@ func Verify(publicKey []byte, doc []byte, opts SignatureOptions) error {
 	}
 	defer closeDoc(parsedDoc)
 
+	// nosec
 	node := C.xmlSecFindNode(C.xmlDocGetRootElement(parsedDoc),
 		(*C.xmlChar)(unsafe.Pointer(&C.xmlSecNodeSignature)),
 		(*C.xmlChar)(unsafe.Pointer(&C.xmlSecDSigNs)))

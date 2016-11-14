@@ -49,8 +49,8 @@ func onXmlsecError(file *C.char, line C.int, funcName *C.char, errorObject *C.ch
 	globalErrors[threadID] = append(globalErrors[threadID], err)
 }
 
-//export onXmlError
-func onXmlError(msg *C.char) {
+//export onXMLError
+func onXMLError(msg *C.char) {
 	threadID := getThreadID()
 	globalErrors[threadID] = append(globalErrors[threadID],
 		fmt.Errorf("%s", strings.TrimSuffix(C.GoString(msg), "\n")))
