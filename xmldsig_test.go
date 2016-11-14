@@ -179,7 +179,7 @@ func (testSuite *XMLDSigTest) TestConstructFromSignature(c *C) {
     <SignedInfo>
       <CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/>
       <SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/>
-      <Reference>
+      <Reference URI="">
         <Transforms>
           <Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>
         </Transforms>
@@ -187,8 +187,8 @@ func (testSuite *XMLDSigTest) TestConstructFromSignature(c *C) {
         <DigestValue>sEenIPkW9ssFSB9t4UU6VUrytqc=</DigestValue>
       </Reference>
     </SignedInfo>
-    <SignatureValue>chSWfpQBIQraySsUHzs5N51+ruelu2HMHh5Mnd3EjcLqFBVD0f23kmXUp7zVhCVD
-vCfqu9yXDYKVOBI57F0Efg==</SignatureValue>
+    <SignatureValue>xGbrj3FkyalDesH7R8xS41i5w69sM9WvuFmPeJ/LQ1zIjHoeHBq4SRzTOPg9xgjj
+YYGrWwpJY9khPQsfwjwWTQ==</SignatureValue>
     <KeyInfo>
       <X509Data>
         <X509Certificate>MIIDpzCCA1GgAwIBAgIJAK+ii7kzrdqvMA0GCSqGSIb3DQEBBQUAMIGcMQswCQYDVQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTE9MDsGA1UEChM0WE1MIFNlY3VyaXR5IExpYnJhcnkgKGh0dHA6Ly93d3cuYWxla3NleS5jb20veG1sc2VjKTEWMBQGA1UEAxMNQWxla3NleSBTYW5pbjEhMB8GCSqGSIb3DQEJARYSeG1sc2VjQGFsZWtzZXkuY29tMCAXDTE0MDUyMzE3NTUzNFoYDzIxMTQwNDI5MTc1NTM0WjCBxzELMAkGA1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWExPTA7BgNVBAoTNFhNTCBTZWN1cml0eSBMaWJyYXJ5IChodHRwOi8vd3d3LmFsZWtzZXkuY29tL3htbHNlYykxKTAnBgNVBAsTIFRlc3QgVGhpcmQgTGV2ZWwgUlNBIENlcnRpZmljYXRlMRYwFAYDVQQDEw1BbGVrc2V5IFNhbmluMSEwHwYJKoZIhvcNAQkBFhJ4bWxzZWNAYWxla3NleS5jb20wXDANBgkqhkiG9w0BAQEFAANLADBIAkEA09BtD3aeVt6DVDkk0dI7Vh7LjqdnsYmW0tbDVxxK+nume+Z9Sb4znbUKkWl+vgQATdRUEyhT2P+Gqrd0UBzYfQIDAQABo4IBRTCCAUEwDAYDVR0TBAUwAwEB/zAsBglghkgBhvhCAQ0EHxYdT3BlblNTTCBHZW5lcmF0ZWQgQ2VydGlmaWNhdGUwHQYDVR0OBBYEFNf0xkZ3zjcEI60pVPuwDqTMQygZMIHjBgNVHSMEgdswgdiAFP7k7FMk8JWVxxC14US1XTllWuN+oYG0pIGxMIGuMQswCQYDVQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTE9MDsGA1UEChM0WE1MIFNlY3VyaXR5IExpYnJhcnkgKGh0dHA6Ly93d3cuYWxla3NleS5jb20veG1sc2VjKTEQMA4GA1UECxMHUm9vdCBDQTEWMBQGA1UEAxMNQWxla3NleSBTYW5pbjEhMB8GCSqGSIb3DQEJARYSeG1sc2VjQGFsZWtzZXkuY29tggkAr6KLuTOt2q0wDQYJKoZIhvcNAQEFBQADQQAOXBj0yICp1RmHXqnUlsppryLCW3pKBD1dkb4HWarO7RjA1yJJfBjXssrERn05kpBcrRfzou4r3DCgQFPhjxga</X509Certificate>
@@ -197,6 +197,7 @@ vCfqu9yXDYKVOBI57F0Efg==</SignatureValue>
   </Signature>
 </Envelope>
 `
+
 	c.Assert(string(actualSignedString), Equals, expectedSignedString)
 
 	err = Verify(testSuite.Cert, actualSignedString, SignatureOptions{})
