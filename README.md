@@ -1,6 +1,10 @@
 # go-xmlsec
 
-[![](https://godoc.org/github.com/miracl/go-xmlsec?status.png)](http://godoc.org/github.com/miracl/go-xmlsec) [![Build Status](https://travis-ci.org/miracl/go-xmlsec.svg?branch=master)](https://travis-ci.org/miracl/go-xmlsec)
+[![Documentation](https://godoc.org/github.com/miracl/go-xmlsec?status.png)](http://godoc.org/github.com/miracl/go-xmlsec) 
+[![Master Build Status](https://secure.travis-ci.org/miracl/go-xmlsec.png?branch=master)](https://travis-ci.org/miracl/go-xmlsec?branch=master)
+[![Master Coverage Status](https://coveralls.io/repos/miracl/go-xmlsec/badge.svg?branch=master&service=github)](https://coveralls.io/github/miracl/go-xmlsec?branch=master)
+[![Go Report Card](https://goreportcard.com/badge/github.com/miracl/go-xmlsec)](https://goreportcard.com/report/github.com/miracl/go-xmlsec)
+
 
 A partial wrapper for [xmlsec](https://www.aleksey.com/xmlsec). 
 
