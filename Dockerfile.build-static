@@ -1,8 +1,8 @@
 FROM ubuntu:16.04
 RUN apt-get update -yy && \
-	apt-get install -yy git make curl pkg-config
+ apt-get install -yy git make curl pkg-config
 
-RUN curl -s https://storage.googleapis.com/golang/go1.7.linux-amd64.tar.gz | tar -C /usr/local -xzf -
+RUN curl -s https://storage.googleapis.com/golang/go1.7.3.linux-amd64.tar.gz | tar -C /usr/local -xzf -
 ENV GOPATH=/go
 ENV PATH=$PATH:/usr/local/go/bin:/go/bin
 RUN mkdir -p /go/bin
@@ -22,7 +22,7 @@ RUN curl -sL ftp://xmlsoft.org/libxml2/libxml2-2.9.4.tar.gz | tar -xzf - && \
     --without-history \
     --without-html \
     --without-http \
-    --without-iconv	\
+    --without-iconv \
     --without-icu \
     --without-iso8859x \
     --without-legacy \
@@ -31,7 +31,7 @@ RUN curl -sL ftp://xmlsoft.org/libxml2/libxml2-2.9.4.tar.gz | tar -xzf - && \
     --with-output \
     --without-pattern \
     --with-push \
-    --without-python	\
+    --without-python \
     --without-reader \
     --without-readline \
     --without-regexps \
@@ -53,8 +53,7 @@ RUN curl -sL ftp://xmlsoft.org/libxml2/libxml2-2.9.4.tar.gz | tar -xzf - && \
     --without-coverage && \
     make install
 
-RUN \
-  curl -sL ftp://ftp.openssl.org/source/openssl-1.0.2j.tar.gz | tar -xzf - && \
+RUN curl -sL ftp://ftp.openssl.org/source/openssl-1.0.2j.tar.gz | tar -xzf - && \
   cd openssl-1.0.2j && \
   ./config \
     no-shared \
@@ -70,28 +69,28 @@ RUN \
   make depend install
 
 RUN curl -sL http://www.aleksey.com/xmlsec/download/xmlsec1-1.2.22.tar.gz | tar -xzf - && \
-	cd xmlsec1-1.2.22 && \
-	./configure \
-		--enable-static \
-		--disable-shared \
-		--disable-crypto-dl \
-		--disable-apps-crypto-dl \
-		--enable-static-linking \
-		--without-gnu-ld \
-		--with-default-crypto=openssl \
-		--with-openssl=/usr/local/ssl \
-		--with-libxml=/usr/local \
-		--without-nss \
-		--without-nspr \
-		--without-gcrypt \
-		--without-gnutls \
-		--without-libxslt && \
-	make -C src install && \
-	make -C include install && \
-	make install-pkgconfigDATA
+ cd xmlsec1-1.2.22 && \
+ ./configure \
+  --enable-static \
+  --disable-shared \
+  --disable-crypto-dl \
+  --disable-apps-crypto-dl \
+  --enable-static-linking \
+  --without-gnu-ld \
+  --with-default-crypto=openssl \
+  --with-openssl=/usr/local/ssl \
+  --with-libxml=/usr/local \
+  --without-nss \
+  --without-nspr \
+  --without-gcrypt \
+  --without-gnutls \
+  --without-libxslt && \
+ make -C src install && \
+ make -C include install && \
+ make install-pkgconfigDATA
 
-ADD . /go/src/github.com/andy-miracl/go-xmlsec
-WORKDIR /go/src/github.com/andy-miracl/go-xmlsec
+ADD . /go/src/github.com/miracl/go-xmlsec
+WORKDIR /go/src/github.com/miracl/go-xmlsec
 RUN go get github.com/crewjam/errset
 RUN go build -tags static -ldflags '-s -extldflags "-static"' -o /bin/xmldsig ./examples/xmldsig.go
 RUN ldd /bin/xmldsig || true
