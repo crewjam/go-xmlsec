@@ -1,5 +1,15 @@
 language: go
-sudo: false  # silence warning
+
+sudo: false
+
+branches:
+  except:
+    - release
+
+branches:
+  only:
+    - master
+    - develop
 
 addons:
   apt:
@@ -10,12 +20,25 @@ addons:
 go:
   - 1.6
   - 1.7
+  - tip
 
-install:
- - go get -t ./...
- - go get github.com/golang/lint/golint
+matrix:
+  allow_failures:
+    - go: tip
+
+before_install:
+  - if [ -n "$GH_USER" ]; then git config --global github.user ${GH_USER}; fi;
+  - if [ -n "$GH_TOKEN" ]; then git config --global github.token ${GH_TOKEN}; fi;
+  - go get github.com/mattn/goveralls
+
+before_script:
+  - make deps
 
 script:
- - golint *.go
- - go vet ./...
- - go test -v ./...
+  - make qa
+
+after_failure:
+  - cat ./target/test/report.xml
+
+after_success:
+  - if [ "$TRAVIS_GO_VERSION" = "1.7" ]; then $HOME/gopath/bin/goveralls -covermode=count -coverprofile=target/report/coverage.out -service=travis-ci; fi;

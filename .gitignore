@@ -1,2 +1,3 @@
-coverage.html
-coverage.out
+target
+vendor
+/Dockerfile
