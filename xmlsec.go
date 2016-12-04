@@ -40,7 +40,7 @@ func init() {
 }
 
 func newDoc(buf []byte, idattrs []XMLIDOption) (*C.xmlDoc, error) {
-	// nosec
+	// #nosec
 	ctx := C.xmlCreateMemoryParserCtxt((*C.char)(unsafe.Pointer(&buf[0])),
 		C.int(len(buf)))
 	if ctx == nil {
@@ -77,18 +77,18 @@ func addIDAttr(node *C.xmlNode, attrName, nodeName, nsHref string) {
 		cur = C.xmlSecGetNextElementNode(cur.next)
 	}
 
-	// nosec
+	// #nosec
 	if C.GoString((*C.char)(unsafe.Pointer(node.name))) != nodeName {
 		return
 	}
-	// nosec
+	// #nosec
 	if nsHref != "" && node.ns != nil && C.GoString((*C.char)(unsafe.Pointer(node.ns.href))) != nsHref {
 		return
 	}
 
 	// the attribute with name equal to attrName should exist
 	for attr := node.properties; attr != nil; attr = attr.next {
-		// nosec
+		// #nosec
 		if C.GoString((*C.char)(unsafe.Pointer(attr.name))) == attrName {
 			id := C.xmlNodeListGetString(node.doc, attr.children, 1)
 			if id == nil {
@@ -108,9 +108,9 @@ func dumpDoc(doc *C.xmlDoc) []byte {
 	var buffer *C.xmlChar
 	var bufferSize C.int
 	C.xmlDocDumpMemory(doc, &buffer, &bufferSize)
-	defer C.MY_xmlFree(unsafe.Pointer(buffer)) // nosec
+	defer C.MY_xmlFree(unsafe.Pointer(buffer)) // #nosec
 
-	return C.GoBytes(unsafe.Pointer(buffer), bufferSize) // nosec
+	return C.GoBytes(unsafe.Pointer(buffer), bufferSize) // #nosec
 }
 
 func dumpNode(node *C.xmlNode) []byte {
@@ -118,5 +118,5 @@ func dumpNode(node *C.xmlNode) []byte {
 	defer C.xmlBufferFree(buffer)
 	bufferSize := C.xmlNodeDump(buffer, nil, node, 0, 0)
 
-	return C.GoBytes(unsafe.Pointer(buffer.content), bufferSize) // nosec
+	return C.GoBytes(unsafe.Pointer(buffer.content), bufferSize) // #nosec
 }

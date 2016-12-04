@@ -33,7 +33,7 @@ func Decrypt(privateKey []byte, doc []byte) ([]byte, error) {
 		return nil, popError()
 	}
 
-	// nosec
+	// #nosec
 	key := C.xmlSecCryptoAppKeyLoadMemory(
 		(*C.xmlSecByte)(unsafe.Pointer(&privateKey[0])),
 		C.xmlSecSize(len(privateKey)),
@@ -60,7 +60,7 @@ func Decrypt(privateKey []byte, doc []byte) ([]byte, error) {
 	}
 	defer C.xmlSecEncCtxDestroy(encCtx)
 
-	// nosec
+	// #nosec
 	encDataNode := C.xmlSecFindNode(C.xmlDocGetRootElement(parsedDoc),
 		(*C.xmlChar)(unsafe.Pointer(&C.xmlSecNodeEncryptedData)),
 		(*C.xmlChar)(unsafe.Pointer(&C.xmlSecEncNs)))
