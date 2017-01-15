@@ -6,6 +6,8 @@ import "unsafe"
 //   brew install libxmlsec1 libxml2
 //   brew link libxml2 --force
 
+// #cgo CFLAGS: -DXMLSEC_CRYPTO_OPENSSL -UXMLSEC_CRYPTO_DYNAMIC_LOADING
+// #cgo LDFLAGS: -lxmlsec1-openssl
 // #include <xmlsec/xmlsec.h>
 // #include <xmlsec/xmltree.h>
 // #include <xmlsec/xmlenc.h>
