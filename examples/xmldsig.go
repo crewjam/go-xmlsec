@@ -42,7 +42,7 @@ func main() {
 			fmt.Printf("%s\n", err)
 			os.Exit(1)
 		}
-		os.Stdout.Write(signedBuf)
+		os.Stdout.Write(signedBuf) //#nosec
 	}
 
 	if *doVerify {

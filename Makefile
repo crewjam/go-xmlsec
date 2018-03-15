@@ -43,6 +43,8 @@ endif
 # Add the GO binary dir in the PATH
 export PATH := $(GOPATH)/bin:$(PATH)
 
+GOENV=GOPATH=$(GOPATH) CGO_CFLAGS_ALLOW='-w'
+
 # --- MAKE TARGETS ---
 
 # Display general help about this command
@@ -81,9 +83,8 @@ all: help
 # Run the unit tests
 test:
 	@mkdir -p target/test
-	GOPATH=$(GOPATH) \
-	go test -covermode=atomic -bench=. -race -v . | \
-	tee >(PATH=$(GOPATH)/bin:$(PATH) go-junit-report > target/test/report.xml); \
+	$(GOENV) go test -covermode=atomic -bench=. -race -v . | \
+	tee >($(GOENV) go-junit-report > target/test/report.xml); \
 	test $${PIPESTATUS[0]} -eq 0
 
 # Format the source code
@@ -98,44 +99,42 @@ fmtcheck:
 
 # Check for syntax errors
 vet:
-	GOPATH=$(GOPATH) go vet .
+	$(GOENV) go vet .
 
 # Check for style errors
 lint:
-	GOPATH=$(GOPATH) PATH=$(GOPATH)/bin:$(PATH) golint .
+	$(GOENV) golint .
 
 # Generate the coverage report
 coverage:
 	@mkdir -p target/report
-	GOPATH=$(GOPATH) \
-	go test -covermode=count -coverprofile=target/report/coverage.out -v . && \
-	GOPATH=$(GOPATH) \
-	go tool cover -html=target/report/coverage.out -o target/report/coverage.html
+	$(GOENV) go test -covermode=count -coverprofile=target/report/coverage.out -v . && \
+	$(GOENV) go tool cover -html=target/report/coverage.out -o target/report/coverage.html
 
 # Report cyclomatic complexity
 cyclo:
 	@mkdir -p target/report
-	GOPATH=$(GOPATH) gocyclo -avg . | tee target/report/cyclo.txt ; test $${PIPESTATUS[0]} -eq 0
+	$(GOENV) gocyclo -avg . | tee target/report/cyclo.txt ; test $${PIPESTATUS[0]} -eq 0
 
 # Detect ineffectual assignments
 ineffassign:
 	@mkdir -p target/report
-	GOPATH=$(GOPATH) ineffassign . | tee target/report/ineffassign.txt ; test $${PIPESTATUS[0]} -eq 0
+	$(GOENV) ineffassign . | tee target/report/ineffassign.txt ; test $${PIPESTATUS[0]} -eq 0
 
 # Detect commonly misspelled words in source files
 misspell:
 	@mkdir -p target/report
-	GOPATH=$(GOPATH) misspell -error .  | tee target/report/misspell.txt ; test $${PIPESTATUS[0]} -eq 0
+	$(GOENV) misspell -error .  | tee target/report/misspell.txt ; test $${PIPESTATUS[0]} -eq 0
 
 # AST scanner
 astscan:
 	@mkdir -p target/report
-	GOPATH=$(GOPATH) gas ./*.go | tee target/report/astscan.txt ; test $${PIPESTATUS[0]} -eq 0
+	$(GOENV) gas ./... | tee target/report/astscan.txt ; test $${PIPESTATUS[0]} -eq 0
 
 # Generate source docs
 docs:
 	@mkdir -p target/docs
-	nohup sh -c 'GOPATH=$(GOPATH) godoc -http=127.0.0.1:6060' > target/godoc_server.log 2>&1 &
+	nohup sh -c '$(GOENV) godoc -http=127.0.0.1:6060' > target/godoc_server.log 2>&1 &
 	wget --directory-prefix=target/docs/ --execute robots=off --retry-connrefused --recursive --no-parent --adjust-extension --page-requisites --convert-links http://127.0.0.1:6060/pkg/github.com/${VENDOR}/${PROJECT}/ ; kill -9 `lsof -ti :6060`
 	@echo '<html><head><meta http-equiv="refresh" content="0;./127.0.0.1:6060/pkg/'${CVSPATH}'/'${PROJECT}'/index.html"/></head><a href="./127.0.0.1:6060/pkg/'${CVSPATH}'/'${PROJECT}'/index.html">'${PKGNAME}' Documentation ...</a></html>' > target/docs/index.html
 
@@ -146,25 +145,25 @@ qa: fmtcheck test vet lint coverage cyclo ineffassign misspell astscan
 
 # Get the dependencies
 deps:
-	GOPATH=$(GOPATH) go get $(go list ./... | grep -v /vendor/)
-	GOPATH=$(GOPATH) go get github.com/inconshreveable/mousetrap
-	GOPATH=$(GOPATH) go get github.com/golang/lint/golint
-	GOPATH=$(GOPATH) go get github.com/jstemmer/go-junit-report
-	GOPATH=$(GOPATH) go get github.com/axw/gocov/gocov
-	GOPATH=$(GOPATH) go get github.com/fzipp/gocyclo
-	GOPATH=$(GOPATH) go get github.com/gordonklaus/ineffassign
-	GOPATH=$(GOPATH) go get github.com/client9/misspell/cmd/misspell
-	GOPATH=$(GOPATH) go get github.com/HewlettPackard/gas
-	GOPATH=$(GOPATH) go get gopkg.in/check.v1
+	$(GOENV) go get $(go list ./... | grep -v /vendor/)
+	$(GOENV) go get github.com/inconshreveable/mousetrap
+	$(GOENV) go get github.com/golang/lint/golint
+	$(GOENV) go get github.com/jstemmer/go-junit-report
+	$(GOENV) go get github.com/axw/gocov/gocov
+	$(GOENV) go get github.com/fzipp/gocyclo
+	$(GOENV) go get github.com/gordonklaus/ineffassign
+	$(GOENV) go get github.com/client9/misspell/cmd/misspell
+	$(GOENV) go get github.com/HewlettPackard/gas/cmd/gas
+	$(GOENV) go get gopkg.in/check.v1
 
 # Remove any build artifact
 clean:
-	GOPATH=$(GOPATH) go clean ./...
+	$(GOENV) go clean ./...
 
 # Deletes any intermediate file
 nuke:
 	rm -rf ./target
-	GOPATH=$(GOPATH) go clean -i ./...
+	$(GOENV) go clean -i ./...
 
 # Full build and test sequence
 buildall: deps qa
