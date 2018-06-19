@@ -5,12 +5,36 @@ import (
 	"unsafe"
 )
 
-// #include <xmlsec/xmlsec.h>
-// #include <xmlsec/xmltree.h>
-// #include <xmlsec/xmlenc.h>
-// #include <xmlsec/xmldsig.h>
-// #include <xmlsec/errors.h>
-// #include <xmlsec/crypto.h>
+/*
+#include <xmlsec/xmlsec.h>
+#include <xmlsec/xmltree.h>
+#include <xmlsec/xmlenc.h>
+#include <xmlsec/xmldsig.h>
+#include <xmlsec/errors.h>
+#include <xmlsec/crypto.h>
+#include <xmlsec/nodeset.h>
+#include <libxml/list.h>
+
+void
+xmlSecFindNodes(const xmlListPtr found, const xmlNodePtr parent, const xmlChar *name, const xmlChar *ns) {
+
+    xmlNodePtr cur;
+    xmlNodePtr ret;
+
+    xmlSecAssert2(name != NULL, NULL);
+
+    cur = parent;
+    while(cur != NULL) {
+        if(cur->children != NULL) {
+            xmlSecFindNodes(found, cur->children, name, ns);
+        }
+        if((cur->type == XML_ELEMENT_NODE) && xmlSecCheckNodeName(cur, name, ns)) {
+            xmlListPushFront(found, cur);
+        }
+        cur = cur->next;
+    }
+}
+*/
 import "C"
 
 // SignatureOptions represents additional, less commonly used, options for Sign and
@@ -42,22 +66,6 @@ func Sign(key []byte, doc []byte, opts SignatureOptions) ([]byte, error) {
 	startProcessingXML()
 	defer stopProcessingXML()
 
-	ctx := C.xmlSecDSigCtxCreate(nil)
-	if ctx == nil {
-		return nil, errors.New("failed to create signature context")
-	}
-	defer C.xmlSecDSigCtxDestroy(ctx)
-
-	// #nosec
-	ctx.signKey = C.xmlSecCryptoAppKeyLoadMemory(
-		(*C.xmlSecByte)(unsafe.Pointer(&key[0])),
-		C.xmlSecSize(len(key)),
-		C.xmlSecKeyDataFormatPem,
-		nil, nil, nil)
-	if ctx.signKey == nil {
-		return nil, errors.New("failed to load pem key")
-	}
-
 	parsedDoc, err := newDoc(doc, opts.XMLID)
 	if err != nil {
 		return nil, err
@@ -65,15 +73,51 @@ func Sign(key []byte, doc []byte, opts SignatureOptions) ([]byte, error) {
 	defer closeDoc(parsedDoc)
 
 	// #nosec
-	node := C.xmlSecFindNode(C.xmlDocGetRootElement(parsedDoc),
+	found := C.xmlListCreate(nil, nil)
+	defer func() { C.xmlListDelete(found) }()
+
+	C.xmlSecFindNodes(
+		found,
+		C.xmlDocGetRootElement(parsedDoc),
 		(*C.xmlChar)(unsafe.Pointer(&C.xmlSecNodeSignature)),
 		(*C.xmlChar)(unsafe.Pointer(&C.xmlSecDSigNs)))
-	if node == nil {
+
+	c := C.xmlListSize(found)
+	if c == 0 {
 		return nil, errors.New("cannot find start node")
 	}
 
-	if rv := C.xmlSecDSigCtxSign(ctx, node); rv < 0 {
-		return nil, errors.New("failed to sign")
+	for C.xmlListEmpty(found) == 0 {
+		link := C.xmlListFront(found)
+		if link == nil {
+			return nil, errors.New("Link is null")
+		}
+
+		node := (C.xmlNodePtr)(C.xmlLinkGetData(link))
+		if node != nil {
+
+			ctx := C.xmlSecDSigCtxCreate(nil)
+			if ctx == nil {
+				return nil, errors.New("failed to create signature context")
+			}
+			defer C.xmlSecDSigCtxDestroy(ctx)
+
+			// #nosec
+			ctx.signKey = C.xmlSecCryptoAppKeyLoadMemory(
+				(*C.xmlSecByte)(unsafe.Pointer(&key[0])),
+				C.xmlSecSize(len(key)),
+				C.xmlSecKeyDataFormatPem,
+				nil, nil, nil)
+
+			if ctx.signKey == nil {
+				return nil, errors.New("failed to load pem key")
+			}
+
+			if rv := C.xmlSecDSigCtxSign(ctx, node); rv < 0 {
+				return nil, errors.New("failed to sign")
+			}
+		}
+		C.xmlListPopFront(found)
 	}
 
 	return dumpDoc(parsedDoc), nil
@@ -131,12 +175,6 @@ func Verify(publicKey []byte, doc []byte, opts SignatureOptions) error {
 		return mustPopError()
 	}
 
-	dsigCtx := C.xmlSecDSigCtxCreate(keysMngr)
-	if dsigCtx == nil {
-		return mustPopError()
-	}
-	defer C.xmlSecDSigCtxDestroy(dsigCtx)
-
 	parsedDoc, err := newDoc(doc, opts.XMLID)
 	if err != nil {
 		return err
@@ -144,19 +182,41 @@ func Verify(publicKey []byte, doc []byte, opts SignatureOptions) error {
 	defer closeDoc(parsedDoc)
 
 	// #nosec
-	node := C.xmlSecFindNode(C.xmlDocGetRootElement(parsedDoc),
+	found := C.xmlListCreate(nil, nil)
+	defer func() { C.xmlListDelete(found) }()
+
+	C.xmlSecFindNodes(
+		found,
+		C.xmlDocGetRootElement(parsedDoc),
 		(*C.xmlChar)(unsafe.Pointer(&C.xmlSecNodeSignature)),
 		(*C.xmlChar)(unsafe.Pointer(&C.xmlSecDSigNs)))
-	if node == nil {
+
+	c := C.xmlListSize(found)
+	if c == 0 {
 		return errors.New("cannot find start node")
 	}
 
-	if rv := C.xmlSecDSigCtxVerify(dsigCtx, node); rv < 0 {
-		return ErrVerificationFailed
-	}
+	for C.xmlListEmpty(found) == 0 {
+		link := C.xmlListFront(found)
+		if link == nil {
+			break
+		}
+		node := (C.xmlNodePtr)(C.xmlLinkGetData(link))
+		if node != nil {
+			ctx := C.xmlSecDSigCtxCreate(keysMngr)
+			if ctx == nil {
+				return mustPopError()
+			}
+			defer C.xmlSecDSigCtxDestroy(ctx)
 
-	if dsigCtx.status != xmlSecDSigStatusSucceeded {
-		return ErrVerificationFailed
+			if rv := C.xmlSecDSigCtxVerify(ctx, node); rv < 0 {
+				return ErrVerificationFailed
+			}
+			if ctx.status != xmlSecDSigStatusSucceeded {
+				return ErrVerificationFailed
+			}
+		}
+		C.xmlListPopFront(found)
 	}
 	return nil
 }
