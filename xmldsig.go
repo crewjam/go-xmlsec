@@ -155,3 +155,60 @@ func Verify(publicKey []byte, doc []byte, opts SignatureOptions) error {
 	}
 	return nil
 }
+
+// Verify checks that the signature in doc is valid according
+// to the XMLDSIG specification. certs is an array of trusted certificates.
+// If the signature is not correct, this function returns ErrVerificationFailed.
+func VerifyTrusted(certs [][]byte, doc []byte, opts SignatureOptions) error {
+	startProcessingXML()
+	defer stopProcessingXML()
+
+	keysMngr := C.xmlSecKeysMngrCreate()
+	if keysMngr == nil {
+		return mustPopError()
+	}
+	defer C.xmlSecKeysMngrDestroy(keysMngr)
+
+	if rv := C.xmlSecCryptoAppDefaultKeysMngrInit(keysMngr); rv < 0 {
+		return mustPopError()
+	}
+
+	for _, cert := range certs {
+		if rv := C.xmlSecCryptoAppKeysMngrCertLoadMemory(
+			keysMngr,
+			(*C.xmlSecByte)(unsafe.Pointer(&cert[0])),
+			C.xmlSecSize(len(cert)),
+			C.xmlSecKeyDataFormatCertPem,
+			C.xmlSecKeyDataTypeTrusted); rv < 0 {
+			return mustPopError()
+		}
+	}
+
+	dsigCtx := C.xmlSecDSigCtxCreate(keysMngr)
+	if dsigCtx == nil {
+		return mustPopError()
+	}
+	defer C.xmlSecDSigCtxDestroy(dsigCtx)
+
+	parsedDoc, err := newDoc(doc, opts.XMLID)
+	if err != nil {
+		return err
+	}
+	defer closeDoc(parsedDoc)
+
+	node := C.xmlSecFindNode(C.xmlDocGetRootElement(parsedDoc),
+		(*C.xmlChar)(unsafe.Pointer(&C.xmlSecNodeSignature)),
+		(*C.xmlChar)(unsafe.Pointer(&C.xmlSecDSigNs)))
+	if node == nil {
+		return errors.New("cannot find start node")
+	}
+
+	if rv := C.xmlSecDSigCtxVerify(dsigCtx, node); rv < 0 {
+		return ErrVerificationFailed
+	}
+
+	if dsigCtx.status != xmlSecDSigStatusSucceeded {
+		return ErrVerificationFailed
+	}
+	return nil
+}
