@@ -13,6 +13,13 @@ import (
 // #include <xmlsec/crypto.h>
 import "C"
 
+type KeyFormat int
+
+const (
+	PEM = iota
+	DER
+)
+
 // SignatureOptions represents additional, less commonly used, options for Sign and
 // Verify
 type SignatureOptions struct {
@@ -24,6 +31,9 @@ type SignatureOptions struct {
 	// http://www.w3.org/TR/xml-id/
 	// http://xmlsoft.org/html/libxml-valid.html#xmlAddID
 	XMLID []XMLIDOption
+
+	// The format of the key (PEM, DER). By default, uses PEM
+	KeyFormat KeyFormat
 }
 
 // XMLIDOption represents the definition of an XML reference element
@@ -32,6 +42,22 @@ type XMLIDOption struct {
 	ElementName      string
 	ElementNamespace string
 	AttributeName    string
+}
+
+func xmlSecKeyDataFormat(format KeyFormat) C.xmlSecKeyDataFormat {
+	switch format {
+	case PEM: return C.xmlSecKeyDataFormatPem
+	case DER: return C.xmlSecKeyDataFormatDer
+	default: return C.xmlSecKeyDataFormatPem
+	}
+}
+
+func xmlSecCertKeyDataFormat(format KeyFormat) C.xmlSecKeyDataFormat {
+	switch format {
+	case PEM: return C.xmlSecKeyDataFormatCertPem
+	case DER: return C.xmlSecKeyDataFormatCertDer
+	default: return C.xmlSecKeyDataFormatCertPem
+	}
 }
 
 // Sign returns a version of doc signed with key according to
@@ -51,7 +77,7 @@ func Sign(key []byte, doc []byte, opts SignatureOptions) ([]byte, error) {
 	ctx.signKey = C.xmlSecCryptoAppKeyLoadMemory(
 		(*C.xmlSecByte)(unsafe.Pointer(&key[0])),
 		C.xmlSecSize(len(key)),
-		C.xmlSecKeyDataFormatPem,
+		xmlSecKeyDataFormat(opts.KeyFormat),
 		nil, nil, nil)
 	if ctx.signKey == nil {
 		return nil, errors.New("failed to load pem key")
@@ -109,7 +135,7 @@ func Verify(publicKey []byte, doc []byte, opts SignatureOptions) error {
 	key := C.xmlSecCryptoAppKeyLoadMemory(
 		(*C.xmlSecByte)(unsafe.Pointer(&publicKey[0])),
 		C.xmlSecSize(len(publicKey)),
-		C.xmlSecKeyDataFormatCertPem,
+		xmlSecCertKeyDataFormat(opts.KeyFormat),
 		nil, nil, nil)
 	if key == nil {
 		return mustPopError()
@@ -118,7 +144,7 @@ func Verify(publicKey []byte, doc []byte, opts SignatureOptions) error {
 	if rv := C.xmlSecCryptoAppKeyCertLoadMemory(key,
 		(*C.xmlSecByte)(unsafe.Pointer(&publicKey[0])),
 		C.xmlSecSize(len(publicKey)),
-		C.xmlSecKeyDataFormatCertPem); rv < 0 {
+		xmlSecCertKeyDataFormat(opts.KeyFormat)); rv < 0 {
 		C.xmlSecKeyDestroy(key)
 		return mustPopError()
 	}
