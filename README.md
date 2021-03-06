@@ -92,4 +92,12 @@ go build -tags static -ldflags '-s -extldflags "-static"' -o /bin/xmldsig-static
 
 Running `ldd` on the output should produce `not a dynamic executable`.
 
+# Running the example
 
+After cloning this repository, change your current directory to the `examples` one, then run:
+```
+openssl req -x509 -nodes -newkey rsa:4096 -sha512 -keyout key.pem -out crt.pem -days 1095
+go mod init example
+go mod tidy
+go run xmldsig.go -s -k key.pem -x example.xml
+```
