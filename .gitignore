@@ -1,2 +1,6 @@
 coverage.html
 coverage.out
+/examples/*.pem
+/examples/go.mod
+/examples/go.sum
+/.idea/
