@@ -1,14 +1,11 @@
-FROM ubuntu:16.04
+FROM golang:1-buster
+
+ENV GO111MODULE=auto
 RUN apt-get update -yy && \
 	apt-get install -yy git make curl pkg-config
 
-RUN curl -s https://storage.googleapis.com/golang/go1.7.linux-amd64.tar.gz | tar -C /usr/local -xzf -
-ENV GOPATH=/go
-ENV PATH=$PATH:/usr/local/go/bin:/go/bin
-RUN mkdir -p /go/bin
-
-RUN curl -sL ftp://xmlsoft.org/libxml2/libxml2-2.9.4.tar.gz | tar -xzf - && \
-  cd /libxml2-2.9.4 && \
+RUN curl --output - -sL ftp://xmlsoft.org/libxml2/libxml2-2.9.4.tar.gz | tar -xzf - && \
+  cd libxml2-2.9.4 && \
   ./configure \
     --enable-static \
     --disable-shared \
@@ -54,8 +51,8 @@ RUN curl -sL ftp://xmlsoft.org/libxml2/libxml2-2.9.4.tar.gz | tar -xzf - && \
     make install
 
 RUN \
-  curl -sL ftp://ftp.openssl.org/source/openssl-1.0.2j.tar.gz | tar -xzf - && \
-  cd openssl-1.0.2j && \
+  curl --output - -sL ftp://ftp.openssl.org/source/openssl-1.1.1k.tar.gz | tar -xzf - && \
+  cd openssl-1.1.1k && \
   ./config \
     no-shared \
     no-weak-ssl-ciphers \
@@ -69,8 +66,8 @@ RUN \
     no-dso && \
   make depend install
 
-RUN curl -sL http://www.aleksey.com/xmlsec/download/xmlsec1-1.2.22.tar.gz | tar -xzf - && \
-	cd xmlsec1-1.2.22 && \
+RUN curl --output - -sL http://www.aleksey.com/xmlsec/download/xmlsec1-1.2.31.tar.gz | tar -xzf - && \
+	cd xmlsec1-1.2.31 && \
 	./configure \
 		--enable-static \
 		--disable-shared \
@@ -79,8 +76,6 @@ RUN curl -sL http://www.aleksey.com/xmlsec/download/xmlsec1-1.2.22.tar.gz | tar 
 		--enable-static-linking \
 		--without-gnu-ld \
 		--with-default-crypto=openssl \
-		--with-openssl=/usr/local/ssl \
-		--with-libxml=/usr/local \
 		--without-nss \
 		--without-nspr \
 		--without-gcrypt \

@@ -1,15 +1,11 @@
-FROM ubuntu
+FROM golang:1-buster
 RUN apt-get update -yy && \
 	apt-get install -yy git make curl libxml2-dev libxmlsec1-dev liblzma-dev pkg-config
 
-RUN curl -s https://storage.googleapis.com/golang/go1.7.linux-amd64.tar.gz | tar -C /usr/local -xzf -
-ENV GOPATH=/go
-ENV PATH=$PATH:/usr/local/go/bin:/go/bin
-RUN mkdir -p /go/bin
-
+ENV GO111MODULE=auto
 ADD . /go/src/github.com/crewjam/go-xmlsec
 WORKDIR /go/src/github.com/crewjam/go-xmlsec
-RUN go get github.com/crewjam/errset
+RUN go get -d -v ./...
 RUN go build -o /bin/xmldsig ./examples/xmldsig.go
 
 # Check our dynamic library dependencies. This will produce output like:
