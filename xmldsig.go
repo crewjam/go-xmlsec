@@ -78,6 +78,59 @@ func Sign(key []byte, doc []byte, opts SignatureOptions) ([]byte, error) {
 
 }
 
+// SignWithX509Certificate returns a version of doc signed with key according to
+// the XMLDSIG standard. doc is a template document meaning
+// that it contains an `http://www.w3.org/2000/09/xmldsig#Signature`
+// element whose properties define how and what to sign.
+// The X509Data node in template will fill automatically
+func SignWithX509Certificate(key []byte, cert []byte, doc []byte, opts SignatureOptions) ([]byte, error) {
+	startProcessingXML()
+	defer stopProcessingXML()
+
+	ctx := C.xmlSecDSigCtxCreate(nil)
+	if ctx == nil {
+		return nil, errors.New("failed to create signature context")
+	}
+	defer C.xmlSecDSigCtxDestroy(ctx)
+
+	ctx.signKey = C.xmlSecCryptoAppKeyLoadMemory(
+		(*C.xmlSecByte)(unsafe.Pointer(&key[0])),
+		C.xmlSecSize(len(key)),
+		C.xmlSecKeyDataFormatPem,
+		nil, nil, nil)
+	if ctx.signKey == nil {
+		return nil, errors.New("failed to load pem key")
+	}
+
+	if C.xmlSecCryptoAppKeyCertLoadMemory(
+		ctx.signKey,
+		(*C.xmlSecByte)(unsafe.Pointer(&cert[0])),
+		C.xmlSecSize(len(cert)),
+		C.xmlSecKeyDataFormatPem) < 0 {
+		return nil, errors.New("failed to load pem certificate")
+	}
+
+	parsedDoc, err := newDoc(doc, opts.XMLID)
+	if err != nil {
+		return nil, err
+	}
+	defer closeDoc(parsedDoc)
+
+	node := C.xmlSecFindNode(C.xmlDocGetRootElement(parsedDoc),
+		(*C.xmlChar)(unsafe.Pointer(&C.xmlSecNodeSignature)),
+		(*C.xmlChar)(unsafe.Pointer(&C.xmlSecDSigNs)))
+	if node == nil {
+		return nil, errors.New("cannot find start node")
+	}
+
+	if rv := C.xmlSecDSigCtxSign(ctx, node); rv < 0 {
+		return nil, errors.New("failed to sign")
+	}
+
+	return dumpDoc(parsedDoc), nil
+
+}
+
 // ErrVerificationFailed is returned from Verify when the signature is incorrect
 var ErrVerificationFailed = errors.New("signature verification failed")
 
